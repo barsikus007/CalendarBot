@@ -1,0 +1,17 @@
+import json
+import pickle
+from pprint import pprint
+
+
+# with open('database.pickle', 'rb') as f:
+#     pprint(pickle.load(f))
+# with open('calendars.pickle', 'rb') as f:
+#     pprint(pickle.load(f))
+# with open('hashes.pickle', 'rb') as f:
+#     pprint(pickle.load(f))
+# with open('auds.pickle', 'rb') as f:
+#     pprint(pickle.load(f))
+with open('Students_new.json', 'rb') as f:
+    data = json.load(f)
+    pprint(data)
+    print(len(data['data']['allStudent']))
