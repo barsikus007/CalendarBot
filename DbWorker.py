@@ -14,15 +14,43 @@ class AIODb:
             self.auth = auth
         self.sql = POSTGRES(self.auth)
 
-    async def user_exists(self, uid):
-        return await self.sql.query_fetch('SELECT * FROM users WHERE id=$1', [uid])
+    async def get_calendar_by_student(self, uid):
+        res = await self.sql.query_fetch('SELECT calendar_id FROM calendar.public.students WHERE id=$1', [uid])
+        return res[0] if res else None
+
+    async def get_calendar_by_telegram(self, telegram_id):
+        res = await self.sql.query_fetch('SELECT calendar_id FROM calendar.public.students WHERE telegram_id=$1', [telegram_id])
+        return res[0] if res else None
+
+    async def get_student_by_telegram(self, telegram_id):
+        res = await self.sql.query_fetch('SELECT id FROM calendar.public.students WHERE telegram_id=$1', [telegram_id])
+        return res[0] if res else None
+
+    async def get_name_by_telegram(self, telegram_id):
+        res = await self.sql.query_fetch('SELECT fio FROM calendar.public.students WHERE telegram_id=$1', [telegram_id])
+        return res[0] if res else None
+
+    async def get_name_by_student(self, uid):
+        res = await self.sql.query_fetch('SELECT fio FROM calendar.public.students WHERE id=$1', [uid])
+        return res[0] if res else None
+
+    async def get_student_by_fio(self, fio):
+        res = await self.sql.query_fetch('SELECT id FROM calendar.public.students WHERE fio=$1', [fio])
+        return res[0] if res else None
+
+    async def get_short_fio_by_student(self, uid):
+        res = await self.sql.query_fetch('SELECT fio FROM calendar.public.students WHERE id=$1', [uid])
+        fio = res[0] if res else None
+        if fio:
+            fio = fio.split()
+            fio = f'{fio[0]} {fio[1][0]}. {fio[2][0]}.'
+        return fio
+
+    async def calendar_exists(self, uid):
+        return await self.sql.query_fetch('SELECT calendar_id FROM calendar.public.students WHERE id=$1', [uid])
 
     async def add_user(self, uid):
         await self.sql.query('INSERT INTO users(id, date) VALUES ($1, $2)', [uid, int(time.time())])
-
-    async def get_user(self, uid):
-        res = await self.sql.query_fetch('SELECT * FROM users WHERE id=$1', [int(uid)])
-        return res[0] if res else None
 
     async def change_status(self, uid, status):
         await self.sql.query('UPDATE users SET dialog_status=$1 WHERE id=$2', [status, uid])

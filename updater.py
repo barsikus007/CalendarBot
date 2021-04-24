@@ -15,11 +15,11 @@ logger.setLevel(logging.INFO)
 fmt = logging.Formatter('%(asctime)s: [%(levelname)-5s]: %(message)s', '[%y/%m/%d][%H:%M:%S]')
 log = logging.StreamHandler()
 log.setFormatter(fmt)
-errlog = logging.FileHandler('crash.log', encoding='UTF-8')
-errlog.setLevel(logging.ERROR)
-errlog.setFormatter(fmt)
+err_log = logging.FileHandler('crash.log', encoding='UTF-8')
+err_log.setLevel(logging.ERROR)
+err_log.setFormatter(fmt)
 logger.addHandler(log)
-logger.addHandler(errlog)
+logger.addHandler(err_log)
 
 
 def error_log(e, text):
@@ -40,55 +40,6 @@ def dump_calendar(user_id, calendar_link):
     calendars[user_id] = calendar_link
     with open('calendars.pickle', 'wb') as f:
         pickle.dump(calendars, f)
-
-
-def converter(calendar_json):
-    ics_json = []
-    for event in calendar_json:
-        event_dict = dict()
-        start = datetime.strptime(event['start'], '%Y-%m-%dT%H:%M:%S+03:00').astimezone(timezone.utc)
-        end = datetime.strptime(event['end'], '%Y-%m-%dT%H:%M:%S+03:00').astimezone(timezone.utc)
-        event_dict['Subject'] = event['name']
-        event_dict['Start'] = start.isoformat()[:-6] + 'Z'
-        event_dict['End'] = end.isoformat()[:-6] + 'Z'
-        description_raw = event['info']
-        description = f"""Преподаватель: {description_raw['teacher']}
-Модуль: {description_raw['moduleName']}
-Тема: {description_raw['theme']}
-Группа: {description_raw['groupName']}"""
-        event_dict['Description'] = description
-        event_dict['Location'] = description_raw['aud']
-        event_dict['groupName'] = description_raw['groupName']
-        event_dict['hash'] = description_raw['raspItemID']
-        event_dict['link'] = f'{description_raw["link"]}\n' if description_raw['link'] else ''
-        ics_json.append(event_dict)
-    return ics_json
-
-
-def generator(events_json):
-    events = []
-    for event in events_json:
-        hash_plus = str(event['hash']) + '0000'
-        events.append(
-            {
-                'summary': event["Subject"],
-                'location': event['Location'],
-                'description': f'{event["link"]}{event["Description"]}',
-                'id': hash_plus,
-                'start': {
-                    'dateTime': event["Start"],
-                    'timeZone': 'Europe/Moscow',
-                },
-                'end': {
-                    'dateTime': event["End"],
-                    'timeZone': 'Europe/Moscow',
-                },
-            })
-    print('U')
-    # from pprint import pp
-    # pp(events)
-    # exit()
-    return events
 
 
 def get_events(student_id, debug=False):
@@ -117,14 +68,73 @@ def get_events(student_id, debug=False):
     print('C', end='')
     event_json = converter(calendar_json)
 
+    print('S', end='')
+    events_sorted = sorter(event_json)
+
     print('G', end='')
-    return generator(event_json)
+    return generator(events_sorted)
+
+
+def converter(calendar_json):
+    ics_json = []
+    for event in calendar_json:
+        event_dict = dict()
+        start = datetime.strptime(event['start'], '%Y-%m-%dT%H:%M:%S+03:00').astimezone(timezone.utc)
+        end = datetime.strptime(event['end'], '%Y-%m-%dT%H:%M:%S+03:00').astimezone(timezone.utc)
+        event_dict['Subject'] = event['name']
+        event_dict['Start'] = start.isoformat()[:-6] + 'Z'
+        event_dict['End'] = end.isoformat()[:-6] + 'Z'
+        description_raw = event['info']
+        description = f"""Преподаватель: {description_raw['teacher']}
+Модуль: {description_raw['moduleName']}
+Тема: {description_raw['theme']}
+Группа: {description_raw['groupName']}"""
+        event_dict['Description'] = description
+        event_dict['Location'] = description_raw['aud']
+        event_dict['groupName'] = description_raw['groupName']
+        event_dict['hash'] = description_raw['raspItemID']
+        event_dict['hash2'] = event['raspItemsIDs'][0]
+        event_dict['link'] = f'{description_raw["link"]}\n' if description_raw['link'] else ''
+        ics_json.append(event_dict)
+    return ics_json
+
+
+def sorter(event_json):
+    events = sorted(event_json, key=lambda _: (_['Start'], _['End'], _['hash2']))
+    return events
+
+
+def generator(events_json):
+    events = []
+    for event in events_json:
+        hash_plus = str(event['hash']) + '0000'
+        events.append(
+            {
+                'summary': event["Subject"],
+                'location': event['Location'],
+                'description': f'{event["link"]}{event["Description"]}',
+                'id': hash_plus,
+                'start': {
+                    'dateTime': event["Start"],
+                    'timeZone': 'Europe/Moscow',
+                },
+                'end': {
+                    'dateTime': event["End"],
+                    'timeZone': 'Europe/Moscow',
+                },
+            })
+    print('U')
+    # from pprint import pp
+    # pp(events)
+    # exit()
+    return events
 
 
 class Updater:
     def __init__(self):
         self.service = self.token_init()
         if self.service is None:
+            logger.error('Init error')
             return
 
     def token_init(self):
@@ -169,6 +179,7 @@ class Updater:
                 continue
             with open('hashes.pickle', 'rb') as f:
                 db = pickle.load(f)
+                old_db = db
             ###
             # if number == 29:
             #     # dump = db.get(user_id)
@@ -195,7 +206,8 @@ class Updater:
                 sleep(5)
                 continue
             sleep(1)
-            self.set_events(events, fio, calendar_link)
+            logger.info(f'{len(events)}')
+            self.set_events(events, fio, calendar_link, old_db, new_db)
             with open('hashes.pickle', 'wb') as f:
                 pickle.dump(db, f)
             sleep(5)
@@ -270,10 +282,24 @@ class Updater:
             #                 new_events.append(event)
             # return new_events
 
-    def set_events(self, events, fio, calendar_link):
+    def set_events(self, events, fio, calendar_link, student_db, student_new_db):
+        try:
+            logger.info(f'TODO {len(student_db[1])} - {len(student_new_db[1])}')
+            logger.info(f'TODO {student_db[0]} - {student_new_db[0]}')
+            logger.info(f'TODO {"".join(student_db[1].values())}')
+            logger.info(f'TODO {"".join(student_new_db[1].values())}')
+        except Exception as e:
+            logger.info(f'Debug error {type(e)}//{e}')
         for counter, event in enumerate(events):
             counter += 1
             logger.info(f'Patching event {counter}/{len(events)} for {fio}')
+            try:
+                if not student_db[1][counter] == student_new_db[1][counter]:
+                    logger.info(f'TODO {event}')
+                else:
+                    continue
+            except Exception as e:
+                logger.info(f'Debug error {type(e)}//{e}')
             # Skipper
             # if counter < 60:
             #     continue

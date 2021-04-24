@@ -1,5 +1,3 @@
-https://edu.donstu.ru/api/GroupManager/GetAllStudentSchoolX
-
 https://edu.donstu.ru/api/SuggestedModules/Status POST
 {moduleID: "4", newStatusID: 2}
 

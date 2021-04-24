@@ -1,6 +1,6 @@
 import httpx
 
-auth = ''
+from config import auth
 
 for i in range(0, 150):
     try:

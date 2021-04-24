@@ -3,6 +3,5 @@ venv
 *.log*
 *.json
 *.pickle
-test.py
-test2.py
+test*.py
 config.py
