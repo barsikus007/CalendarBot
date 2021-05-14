@@ -6,4 +6,6 @@ google-auth-oauthlib
 requests
 httpx
 ujson
+
 asyncpg
+SQLAlchemy

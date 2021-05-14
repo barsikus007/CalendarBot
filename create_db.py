@@ -1,122 +1,46 @@
+import pickle
 import asyncio
 
 import httpx
-import asyncpg
+from sqlalchemy.future import select
+from sqlalchemy import Column, DateTime, ForeignKey, text, func, Integer, String
+from sqlalchemy.orm import declarative_base, relationship, selectinload, sessionmaker
 
-from config import DB_AUTH, get_students
-from DbWorker import AIODb
-
-
-async def connect_or_create(args):
-    try:
-        conn = await asyncpg.connect(**args)
-    except asyncpg.exceptions.ConnectionDoesNotExistError or asyncpg.InvalidCatalogNameError:
-        sys_conn = await asyncpg.connect(
-            database='template1',
-            user=args['user'],
-            host=args['host'],
-            port=args['port'],
-            password=args['password'],
-        )
-        user = args['user']
-        database = args['database']
-        await sys_conn.execute(
-            f'CREATE DATABASE "{database}" OWNER "{user}"'
-        )
-        await sys_conn.close()
-        conn = await asyncpg.connect(**args)
-    return conn
+from config import Base, engine, async_session, get_students_url
+from models import Students, Events, Calendar
+from dal import StudentsDAL
 
 
-async def create_tables(conn):
-    await conn.execute(f'''
-create table students
-(
-    id          serial not null
-        constraint students_pk
-            primary key,
-    fio         text   not null,
-    calendar_id text,
-    telegram_id integer
-);
-
-alter table students
-    owner to postgres;
-''')
-    await conn.execute(f'''
-create table events
-(
-    rasp_item_id serial                   not null
-        constraint events_pk
-            primary key,
-    start        timestamp with time zone not null,
-    "end"        timestamp with time zone,
-    name         text                     not null,
-    color        text,
-    teacher      text,
-    module_name  text,
-    theme        text,
-    group_name   text,
-    description  text,
-    aud          text,
-    link         text
-);
-
-alter table events
-    owner to postgres;
-
-create unique index events_rasp_item_id_uindex
-    on events (rasp_item_id);
-''')
-    await conn.execute(f'''
-create table calendar
-(
-    student_id   integer
-        constraint calendar_students_id_fk
-            references students,
-    rasp_item_id integer
-        constraint calendar_events_rasp_item_id_fk
-            references events
-);
-
-alter table calendar
-    owner to postgres;
-''')
+async def reset():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
 
 
-async def students():
-    students_list = httpx.get(get_students).json()['data']['allStudent']
-
-    adb = AIODb(DB_AUTH)
-    sql_list = []
-    for student in students_list:
-        uid = student['studentID']
-        fio = student['fullName']
-        if len(fio.split()) != 3:
-            print(f'Student {uid} - {fio} have error in their name\nFix it manually!')
-        sql_list.append(('INSERT INTO calendar.public.students(id, fio) VALUES ($1, $2)', [uid, fio]))
-    await adb.sql.mass_query(sql_list)
+async def put_students_from_site():
+    students_list = httpx.get(get_students_url).json()['data']['allStudent']
+    students_list = [[_['studentID'], _['fullName']] for _ in students_list]
+    async with async_session() as session:
+        async with session.begin():
+            students = StudentsDAL(session)
+            await students.create_students(students_list)
 
 
-# async def posts():
-#     db = Db()
-#     adb = AIODb(DB_AUTH)
-#     sql_list = []
-#     db.reopen()
-#     for post in db.sql.query_fetch('SELECT * FROM posts'):
-#         print(post)
-#         sql_list.append(('INSERT INTO posts('
-#                          'id, json, current, post_at, from_id, date,'
-#                          'post_id, first_current, upvotes, downvotes, can_vote)'
-#                          'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)', post))
-#     await adb.sql.mass_query(sql_list)
-
-
-async def main():
-    conn = await connect_or_create(DB_AUTH)
-    # await create_tables(conn)
-    await students()
+async def add_data_from_old_db():
+    with open('calendars.pickle', 'rb') as f:
+        calendars = pickle.load(f)
+    with open('database.pickle', 'rb') as f:
+        database = pickle.load(f)
+    async with async_session() as session:
+        async with session.begin():
+            students = StudentsDAL(session)
+            for cal in calendars:
+                await students.update_student(student_id=cal, calendar_id=calendars[cal])
+            for cal in database:
+                await students.update_student(student_id=database[cal]['uid'], telegram_id=cal)
 
 
 if __name__ == '__main__':
-    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.get_event_loop().run_until_complete(reset())
+    asyncio.get_event_loop().run_until_complete(put_students_from_site())
+    asyncio.get_event_loop().run_until_complete(add_data_from_old_db())

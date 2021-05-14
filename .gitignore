@@ -1,6 +1,6 @@
 venv
 .idea
-*.log*
+*.log
 *.json
 *.pickle
 test*.py

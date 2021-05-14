@@ -13,7 +13,3 @@ with open('calendars.pickle', 'rb') as f:
 #     print(len(data[269788][1]))
 # with open('auds.pickle', 'rb') as f:
 #     pprint(pickle.load(f))
-# with open('Students_new.json', 'rb') as f:
-#     data = json.load(f)
-#     pprint(data)
-#     print(len(data['data']['allStudent']))

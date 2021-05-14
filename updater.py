@@ -9,7 +9,6 @@ import ujson as json
 from googleapiclient import errors
 from googleapiclient.discovery import build
 
-
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 fmt = logging.Formatter('%(asctime)s: [%(levelname)-5s]: %(message)s', '[%y/%m/%d][%H:%M:%S]')
@@ -310,28 +309,31 @@ class Updater:
             #     print('Skipped')
             #     continue
             sleep(0.5)
-            try:
+            self.patch_event(calendar_link, event)
+
+    def patch_event(self, calendar_link, event):
+        try:
+            self.service.events().patch(calendarId=calendar_link, body=event, eventId=event['id']).execute()
+        except errors.HttpError as e:
+            if e.resp.status == 403:
+                logger.info('403 ERROR Sleeping for 10 secs')
+                sleep(10)
                 self.service.events().patch(calendarId=calendar_link, body=event, eventId=event['id']).execute()
-            except errors.HttpError as e:
-                if e.resp.status == 403:
-                    logger.info('403 ERROR Sleeping for 10 secs')
-                    sleep(10)
-                    self.service.events().patch(calendarId=calendar_link, body=event, eventId=event['id']).execute()
-                    error_log(e, f'403 ERROR')
-                elif e.resp.status == 404:
-                    logger.info('Creating event...')
-                    self.service.events().insert(calendarId=calendar_link, body=event).execute()
-                elif e.resp.status == 503:
-                    logger.info('503 ERROR WTF?!')
-                    error_log(e, f'Backend Error?')
-                else:
-                    error_log(e, f'UNKNOWN HTTP ERROR')
-            except ConnectionResetError as e:
-                error_log(e, f'[WinError ConnectionResetError]')
-            except OSError as e:
-                error_log(e, f'OSError')
-            except Exception as e:
-                error_log(e, f'UNKNOWN ERROR')
+                error_log(e, f'403 ERROR')
+            elif e.resp.status == 404:
+                logger.info('Creating event...')
+                self.service.events().insert(calendarId=calendar_link, body=event).execute()
+            elif e.resp.status == 503:
+                logger.info('503 ERROR WTF?!')
+                error_log(e, f'Backend Error?')
+            else:
+                error_log(e, f'UNKNOWN HTTP ERROR')
+        except ConnectionResetError as e:
+            error_log(e, f'[WinError ConnectionResetError]')
+        except OSError as e:
+            error_log(e, f'OSError')
+        except Exception as e:
+            error_log(e, f'UNKNOWN ERROR')
 
     def remove_event(self, event):
         pass
