@@ -1,5 +1,4 @@
 import asyncio
-from datetime import datetime
 
 from sqlalchemy import text, func
 from sqlalchemy.future import select
@@ -92,8 +91,6 @@ async def get_event(rasp_item_id: int):
 async def create_event(event: dict):
     async with async_session() as session:
         async with session.begin():
-            event['start'] = datetime.strptime(event['start'], '%Y-%m-%dT%H:%M:%S%z')
-            event['end'] = datetime.strptime(event['end'], '%Y-%m-%dT%H:%M:%S%z')
             events = EventsDAL(session)
             await events.create_event(event)
 
@@ -101,8 +98,6 @@ async def create_event(event: dict):
 async def update_event(event: dict):
     async with async_session() as session:
         async with session.begin():
-            event['start'] = datetime.strptime(event['start'], '%Y-%m-%dT%H:%M:%S%z')
-            event['end'] = datetime.strptime(event['end'], '%Y-%m-%dT%H:%M:%S%z')
             events = EventsDAL(session)
             return await events.update_event(event)
 

@@ -22,7 +22,7 @@ logger.addHandler(err_log)
 
 
 def error_log(e, text):
-    logger.error(f'[{e}/{type(e)}]: {text}\n')
+    logger.error(f'[{e}/{type(e)}]: {text}')
 
 
 def get_name(user_id):
@@ -165,8 +165,9 @@ class Updater:
             fio = get_name(user_id)
             logger.info(f'User {number}/{len(self.users)} - {fio}')
             # Skipper
-            # if number != 29:
-            #     continue
+            if number == 1:
+                logger.info('FORCE SKIP')
+                continue
             calendar_link = self.get_calendars(fio, user_id, calendar_link)
             # google_events = self.get_events(user_id, calendar_link)
             # TODO ids = [i['id'] for i in google_events]

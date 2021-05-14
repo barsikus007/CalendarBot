@@ -2,12 +2,8 @@ import pickle
 import asyncio
 
 import httpx
-from sqlalchemy.future import select
-from sqlalchemy import Column, DateTime, ForeignKey, text, func, Integer, String
-from sqlalchemy.orm import declarative_base, relationship, selectinload, sessionmaker
 
 from config import Base, engine, async_session, get_students_url
-from models import Students, Events, Calendar
 from dal import StudentsDAL
 
 
