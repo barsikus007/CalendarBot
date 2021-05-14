@@ -1,6 +1,7 @@
 venv
 .idea
 *.log
+*.csv
 *.json
 *.pickle
 test*.py

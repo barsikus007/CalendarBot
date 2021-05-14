@@ -238,6 +238,11 @@ async def dump(message: types.Message):
         await message.answer_document(document=open("calendars.pickle", "rb"))
 
 
+@dp.message_handler()
+async def anal_plug(message: types.Message):
+    return await message.answer('Closed for maintenance')
+
+
 @dp.message_handler(commands="setup")
 async def setup(message: types.Message):
     print(log(message))

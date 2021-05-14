@@ -1,6 +1,5 @@
 import os
 import asyncio
-import logging
 from hashlib import md5
 from datetime import datetime
 
@@ -15,22 +14,7 @@ from db import get_calendars, get_event, get_calendar
 from db import create_event, create_calendar
 from db import update_event, update_calendar
 from db import delete_calendar
-from config import get_calendar_url
-
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-fmt = logging.Formatter('%(asctime)s: [%(levelname)-5s]: %(message)s', '[%y/%m/%d][%H:%M:%S]')
-log = logging.StreamHandler()
-log.setFormatter(fmt)
-file_log = logging.FileHandler('worker.log', encoding='UTF-8')
-file_log.setFormatter(fmt)
-err_log = logging.FileHandler('worker_crash.log', encoding='UTF-8')
-err_log.setLevel(logging.ERROR)
-err_log.setFormatter(fmt)
-logger.addHandler(log)
-logger.addHandler(file_log)
-logger.addHandler(err_log)
+from config import get_calendar_url, logger
 
 
 def error_log(e: Exception, text):
@@ -118,7 +102,7 @@ async def calendar_executor(student_id):
     except httpx.NetworkError as e:
         error_log(e, '[ConnectionError wtf]')
     except Exception as e:
-        error_log(e, '[UNKNOWN ERROR IN CALENDAR GETTER]')
+        error_log(e, '[UNKNOWN ERROR IN CALENDAR EXECUTOR]')
 
 
 def get_service():
@@ -151,7 +135,6 @@ def get_service():
 
 
 async def google_executor(service, to_google, student_id, calendar_id):
-    calendar_id = '3mloc77o7c3tpjhi9rrajhccm8@group.calendar.google.com'  # TODO
     events_to_create, events_to_update, events_to_delete = to_google
     for num, event in enumerate(events_to_create):
         logger.info(f'{num+1}/{len(events_to_create)} - Create')
@@ -206,7 +189,7 @@ async def send_google_event(service, calendar_id, event, create=False):
                 error_log(e, '[Backend Error]')
                 await asyncio.sleep(10)
             else:
-                error_log(e, f'[UNKNOWN HTTP ERROR]')
+                error_log(e, f'[UNKNOWN HTTP ERROR IN EVENT CREATE]')
         except Exception as e:
             error_log(e, '[UNKNOWN ERROR IN EVENT CREATE]')
             await asyncio.sleep(10)
@@ -216,7 +199,8 @@ async def delete_google_event(service, calendar_id, event_id):
     while True:
         await asyncio.sleep(0.5)
         try:
-            return service.events().patch(calendarId=calendar_id, eventId=event_id, body={'status': 'cancelled'}).execute()
+            request = service.events().patch(calendarId=calendar_id, eventId=event_id, body={'status': 'cancelled'})
+            return request.execute()
         except errors.HttpError as e:
             if e.resp.status == 403:
                 logger.info('403 ERROR SLEEPING...')
@@ -226,7 +210,7 @@ async def delete_google_event(service, calendar_id, event_id):
                 error_log(e, '[Backend Error?]')
                 await asyncio.sleep(10)
             else:
-                error_log(e, f'[UNKNOWN HTTP ERROR]')
+                error_log(e, f'[UNKNOWN HTTP ERROR IN EVENT DELETE]')
         # except ConnectionResetError as e:
         #     error_log(e, '[WinError ConnectionResetError]')
         # except OSError as e:
@@ -246,14 +230,14 @@ async def loop():
                 if student.student_id != 256720:
                     continue
                 # TODO
-                logger.info(f'({num + 1}/{len(calendars)}) [{student.student_id}] {student.fio}')
+                logger.info(f'({num + 1}/{len(calendars)}) #{student.student_id} - {student.fio}')
                 to_google = await calendar_executor(student.student_id)
                 await google_executor(service, to_google, student.student_id, student.calendar_id)
                 await asyncio.sleep(5)
-                logger.info('----------------')
-            # await asyncio.sleep(30)  # TODO
+            logger.info('Last user, sleeping...')
+            await asyncio.sleep(10)
         except Exception as e:
-            error_log(e, '[UNKNOWN ERROR IN ROOT]')
+            error_log(e, '[UNKNOWN ERROR IN LOOP]')
             await asyncio.sleep(300)
 
 
