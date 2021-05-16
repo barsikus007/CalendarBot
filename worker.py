@@ -226,10 +226,6 @@ async def loop():
             service = get_service()
             calendars = await get_calendars()
             for num, student in enumerate(calendars):
-                # TODO
-                if student.student_id != 256720:
-                    continue
-                # TODO
                 logger.info(f'({num + 1}/{len(calendars)}) #{student.student_id} - {student.fio}')
                 to_google = await calendar_executor(student.student_id)
                 await google_executor(service, to_google, student.student_id, student.calendar_id)
@@ -238,7 +234,7 @@ async def loop():
             await asyncio.sleep(10)
         except Exception as e:
             error_log(e, '[UNKNOWN ERROR IN LOOP]')
-            await asyncio.sleep(300)
+            await asyncio.sleep(60)
 
 
 if __name__ == '__main__':

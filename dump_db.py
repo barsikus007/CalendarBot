@@ -1,5 +1,6 @@
 import csv
 import asyncio
+from pathlib import Path
 
 from sqlalchemy.future import select
 
@@ -8,8 +9,9 @@ from config import async_session
 
 
 async def main():
+    Path('csv').mkdir(parents=True, exist_ok=True)
     for table in [Calendar, Events, Students]:
-        with open(f'{table.__tablename__}.csv', 'w', encoding='UTF-8') as file:
+        with open(f'csv/{table.__tablename__}.csv', 'w', encoding='UTF-8') as file:
             out_csv = csv.writer(file)
             async with async_session() as session:
                 q = await session.execute(

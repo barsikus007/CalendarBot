@@ -52,6 +52,7 @@ class Events(Base):
 class Calendar(Base):
     __tablename__ = 'calendar'
 
+    # TODO ondelete='CASCADE'
     student_id = Column(ForeignKey('students.student_id'), primary_key=True, nullable=False)
     rasp_item_id = Column(ForeignKey('events.rasp_item_id'), primary_key=True, nullable=False)
     hash = Column(Text, nullable=False)

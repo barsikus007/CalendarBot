@@ -1,22 +1,6 @@
-import asyncio
-
-from sqlalchemy import text, func
-from sqlalchemy.future import select
-from sqlalchemy.orm import declarative_base, relationship, selectinload, sessionmaker
-
-from models import Students, Events, Calendar
 from dal import StudentsDAL, EventsDAL, CalendarDAL
 
-from config import engine, async_session
-
-
-async def conn_example():
-    async with engine.begin() as conn:
-        result = await conn.execute(
-            text('SELECT * FROM students WHERE student_id=271213')
-        )
-        for row in result:
-            print("username:", row['fio'])
+from config import async_session
 
 
 async def get_calendars():

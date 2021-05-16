@@ -1,11 +1,6 @@
-import os
 import asyncio
 
 from googleapiclient import errors
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 
 from db import get_calendars
 from config import logger
@@ -38,14 +33,10 @@ async def get_all_google_events(service, calendar_id):
 
 async def loop():
     try:
-        # exit('Lock from misclick')
+        exit('Lock from misclick')
         service = get_service()
         calendars = await get_calendars()
         for num, student in enumerate(calendars):
-            # TODO
-            if student.student_id == 256720:
-                continue
-            # TODO
             logger.info(f'({num + 1}/{len(calendars)}) #{student.student_id} - {student.fio}')
             await google_executor(service, student.calendar_id)
             await asyncio.sleep(5)

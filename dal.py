@@ -52,10 +52,9 @@ class StudentsDAL:
         )
         return q.scalars().all()
 
-    async def _get_calendar(self) -> Students:
-        # TODO
+    async def _get_calendar_id(self, student_id: int) -> Students.calendar_id:
         q = await self.session.execute(
-            select(Students).where(Students.calendar_id.isnot(None))
+            select(Students).where(Students.student_id == student_id)
         )
         return q.scalars().first()
 

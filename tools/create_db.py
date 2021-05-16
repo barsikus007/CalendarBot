@@ -23,9 +23,9 @@ async def put_students_from_site():
 
 
 async def add_data_from_old_db():
-    with open('calendars.pickle', 'rb') as f:
+    with open('../calendars.pickle', 'rb') as f:
         calendars = pickle.load(f)
-    with open('database.pickle', 'rb') as f:
+    with open('../database.pickle', 'rb') as f:
         database = pickle.load(f)
     async with async_session() as session:
         async with session.begin():

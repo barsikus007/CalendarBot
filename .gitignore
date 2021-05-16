@@ -1,7 +1,7 @@
-venv
 .idea
+venv
+csv
 *.log
-*.csv
 *.json
 *.pickle
 test*.py

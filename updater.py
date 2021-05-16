@@ -368,6 +368,7 @@ class Updater:
 
 
 if __name__ == '__main__':
+    exit('Deprecated, use worker.py')
     upd = Updater()
     upd.start()
     # & '.\Desktop\Launchers\gcal updater.bat'
