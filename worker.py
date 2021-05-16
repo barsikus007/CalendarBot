@@ -1,20 +1,19 @@
-import os
 import asyncio
 from hashlib import md5
 from datetime import datetime
 
-import httpx
+import requests
 from googleapiclient import errors
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 
 from db import get_calendars, get_event, get_calendar
 from db import create_event, create_calendar
 from db import update_event, update_calendar
 from db import delete_calendar
-from config import get_calendar_url, logger
+from utils import get_logger, get_service
+from config import get_calendar_url
+
+
+logger = get_logger('worker')
 
 
 def error_log(e: Exception, text):
@@ -22,7 +21,7 @@ def error_log(e: Exception, text):
 
 
 def get_calendar_from_site(student_id):
-    response = httpx.get(f'{get_calendar_url}{student_id}', timeout=10)
+    response = requests.get(f'{get_calendar_url}{student_id}', timeout=10)
     raw_events_list = response.json()['data']['raspList']
     logger.info(f'Total - {len(raw_events_list)}')
     if len(raw_events_list) == 0:
@@ -89,49 +88,23 @@ async def calendar_executor(student_id):
             else:
                 old_calendar_dict.pop(event_id)
         events_to_delete = [_ for _ in old_calendar_dict]
-        logger.info(f'To create - {len(events_to_create)}')
-        logger.info(f'To update - {len(events_to_update)}')
-        logger.info(f'To delete - {len(events_to_delete)}')
+        if [] == events_to_create == events_to_update == events_to_delete:
+            logger.info(f'Nothing to change')
+        else:
+            logger.info(f'To create - {len(events_to_create)}')
+            logger.info(f'To update - {len(events_to_update)}')
+            logger.info(f'To delete - {len(events_to_delete)}')
         return events_to_create, events_to_update, events_to_delete
     except ValueError as e:
         error_log(e, '[503 Service Temporarily Unavailable - ValueError]')
     except TypeError as e:
         error_log(e, '[503 Service Temporarily Unavailable - TypeError]')
-    except httpx.ReadTimeout as e:
+    except requests.ReadTimeout as e:
         error_log(e, '[ReadTimeout]')
-    except httpx.NetworkError as e:
+    except requests.ConnectionError as e:
         error_log(e, '[ConnectionError wtf]')
     except Exception as e:
         error_log(e, '[UNKNOWN ERROR IN CALENDAR EXECUTOR]')
-
-
-def get_service():
-    scopes = ['https://www.googleapis.com/auth/calendar']
-    """
-    Shows basic usage of the Google Calendar API.
-    Prints the start and name of the next 10 events on the user's calendar.
-    """
-    credentials = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists('token.json'):
-        credentials = Credentials.from_authorized_user_file('token.json', scopes)
-    # If there are no (valid) credentials available, let the user log in.
-    if not credentials or not credentials.valid:
-        logger.warning('Token - Invalid')
-        if credentials and credentials.expired and credentials.refresh_token:
-            credentials.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', scopes)
-            credentials = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open('token.json', 'w') as token:
-            token.write(credentials.to_json())
-        logger.info('Token - Refreshed')
-    logger.info('Token - OK')
-    return build('calendar', 'v3', credentials=credentials, cache_discovery=False)
 
 
 async def google_executor(service, to_google, student_id, calendar_id):
@@ -223,12 +196,15 @@ async def delete_google_event(service, calendar_id, event_id):
 async def loop():
     while True:
         try:
-            service = get_service()
+            service = get_service(logger)
             calendars = await get_calendars()
             for num, student in enumerate(calendars):
                 logger.info(f'({num + 1}/{len(calendars)}) #{student.student_id} - {student.fio}')
                 to_google = await calendar_executor(student.student_id)
-                await google_executor(service, to_google, student.student_id, student.calendar_id)
+                if to_google is None:
+                    logger.info(f'Skipping google executor due to error above...')
+                else:
+                    await google_executor(service, to_google, student.student_id, student.calendar_id)
                 await asyncio.sleep(5)
             logger.info('Last user, sleeping...')
             await asyncio.sleep(10)

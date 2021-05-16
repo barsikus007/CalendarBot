@@ -3,8 +3,11 @@ import asyncio
 from googleapiclient import errors
 
 from db import get_calendars
-from config import logger
-from worker import get_service, delete_google_event
+from utils import get_logger, get_service
+from worker import delete_google_event
+
+
+logger = get_logger('calendar_remover')
 
 
 def error_log(e: Exception, text):
@@ -34,7 +37,7 @@ async def get_all_google_events(service, calendar_id):
 async def loop():
     try:
         exit('Lock from misclick')
-        service = get_service()
+        service = get_service(logger)
         calendars = await get_calendars()
         for num, student in enumerate(calendars):
             logger.info(f'({num + 1}/{len(calendars)}) #{student.student_id} - {student.fio}')

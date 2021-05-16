@@ -1,7 +1,5 @@
-import os
 import pickle
 import base64
-import logging
 from datetime import datetime
 
 import ujson as json
@@ -10,18 +8,16 @@ from aiogram import md, executor, Bot, Dispatcher
 from aiogram.types import Update, Message, BotCommand, ContentTypes, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from googleapiclient import errors
 
-
-from worker import get_service
-from config import TOKEN, adminID
+from utils import get_logger, get_service
+from config import TOKEN, admin_id
 
 """
 Unofficial donstux bot by @ogu_rez
 To start type /start
 """
 
-
-service = get_service()
-logging.basicConfig(level=logging.INFO)
+logger = get_logger('main')
+service = get_service(logger)
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 commands = [
@@ -37,15 +33,13 @@ commands = [
 
 def log(message: Message = None, query: CallbackQuery = None):
     if message:
-        return f"{datetime.now().strftime('[%H:%M:%S]')} " \
-               f"[{message.from_user.id}/{message.from_user.mention}]: {message.text}"
+        logger.info(f"[{message.from_user.id}/{message.from_user.mention}]: {message.text}")
     if query:
-        return f"{datetime.now().strftime('[%H:%M:%S]')} " \
-               f"[{query.from_user.id}/{query.from_user.mention}]: {query.data}"
+        logger.info(f"[{query.from_user.id}/{query.from_user.mention}]: {query.data}")
 
 
 async def report(text):
-    await bot.send_message(chat_id=adminID, text=text, disable_notification=True)
+    await bot.send_message(chat_id=admin_id, text=text, disable_notification=True)
 
 
 def get_id(fio):
@@ -88,7 +82,7 @@ def get_name(user_id):
 
 
 def create_calendar(user_id):
-    print("Creating new calendar...")
+    logger.info("Creating new calendar...")
     calendar = {
         'summary': get_name(user_id),
         'description': 'Generated and updating by @donstux_bot',
@@ -105,7 +99,7 @@ def create_calendar(user_id):
     calendars[user_id] = created_calendar['id']
     with open("calendars.pickle", "wb") as f:
         pickle.dump(calendars, f)
-    print("SUCCESS")
+    logger.info("SUCCESS")
     return created_calendar["id"]
 
 
@@ -116,16 +110,16 @@ async def get_calendar_link(user_id):
         calendar_link = create_calendar(user_id)
     else:
         try:
-            print("Calendar link exist")
+            logger.info("Calendar link exist")
             service.calendars().get(calendarId=calendar_link).execute()
         except errors.HttpError as e:
             if e.resp.status == 404:
-                print(f"No calendar with that link... Strange\n{calendar_link}\n{user_id}")
-                await bot.send_message(chat_id=adminID, text="AHTUNG, 404 ERROR")
+                logger.info(f"No calendar with that link... Strange\n{calendar_link}\n{user_id}")
+                await bot.send_message(chat_id=admin_id, text="AHTUNG, 404 ERROR")
                 calendar_link = create_calendar(user_id)
             else:
                 return
-    print(calendar_link)
+    logger.info(calendar_link)
     return calendar_link
 
 
@@ -136,8 +130,8 @@ async def errors(event: Update = None, exception: BaseException = None):
 
 @dp.message_handler(commands="dump")
 async def dump(message: Message):
-    print(log(message))
-    if message.from_user.id == adminID:
+    log(message)
+    if message.from_user.id == admin_id:
         await message.answer_document(document=open("database.pickle", "rb"))
         await message.answer_document(document=open("calendars.pickle", "rb"))
 
@@ -149,7 +143,7 @@ async def anal_plug(message: Message):
 
 @dp.message_handler(commands="setup")
 async def setup(message: Message):
-    print(log(message))
+    log(message)
     splitted = message.text.split()
     if message.text == "/setup Иванов Иван Иванович":
         await message.answer("Genius ( ͡° ͜ʖ ͡°)")
@@ -160,7 +154,7 @@ async def setup(message: Message):
         await message.answer(f"Wrong input:\n{message.text}\nExample:\n/setup Иванов Иван Иванович")
     else:
         student = get_id(" ".join(splitted[1:]))
-        print(student)
+        logger.info(student)
         if student:
             dump_info(
                 tg_id=message.from_user.id,
@@ -172,7 +166,7 @@ async def setup(message: Message):
 
 @dp.message_handler(commands="get")
 async def get(message: Message):
-    print(log(message))
+    log(message)
     tg_id = message.from_user.id
     user_data = get_info(tg_id)
     if not user_data:
@@ -201,7 +195,7 @@ async def get(message: Message):
 
 @dp.message_handler(commands="get_aud")
 async def get_aud(message: Message):
-    print(log(message))
+    log(message)
     if message.text == "/get_aud 8-612":
         await message.answer("Genius ( ͡° ͜ʖ ͡°)")
         return
@@ -226,9 +220,9 @@ async def get_aud(message: Message):
                             f"Teacher {event['преподаватель']}\n" \
                             f"Group {event['группа']}\n\n"
         except Exception as e:
-            await bot.send_message(chat_id=adminID, text=f"AHTUNG EXCEPTION:\n{type(e)}\n{e}")
-            print(type(e))
-            print(e)
+            await bot.send_message(chat_id=admin_id, text=f"AHTUNG EXCEPTION:\n{type(e)}\n{e}")
+            logger.info(type(e))
+            logger.info(e)
             await message.answer("Server error")
             return
         await message.answer(text)
@@ -238,7 +232,7 @@ async def get_aud(message: Message):
 
 @dp.message_handler(commands="help")
 async def help_cmd(message: Message):
-    print(log(message))
+    log(message)
     await message.answer(
         f"/setup\n"
         f"/get"
@@ -247,14 +241,14 @@ async def help_cmd(message: Message):
 
 @dp.message_handler(commands="guide")
 async def guide(message: Message):
-    print(log(message))
+    log(message)
     await message.answer_video(caption="Take it!",
                                video="BAACAgIAAxkBAAILJ19zIf-u66UuT4iPXZgMYpsNaNp3AAKQCAACmKGhS4GiuulwDSSfGwQ")
 
 
 @dp.message_handler(commands="start")
 async def start_cmd(message: Message):
-    print(log(message))
+    log(message)
     await bot.set_my_commands(commands)
     await message.answer("For the first time you need to setup name via /setup\n"
                          "After than you can get calendar link via /get\n"
@@ -264,7 +258,7 @@ async def start_cmd(message: Message):
 
 @dp.callback_query_handler(text="google")
 async def google(query: CallbackQuery):
-    print(log(query=query))
+    log(query=query)
     message = query.message
     await message.answer_video(
         caption="Here is guide how to import calendar to normal devices:\n"
@@ -275,7 +269,7 @@ async def google(query: CallbackQuery):
 
 @dp.callback_query_handler(text="apple")
 async def apple(query: CallbackQuery):
-    print(log(query=query))
+    log(query=query)
     message = query.message
     await message.answer(
         text="Choose your IOS version: (PM me if you have IOS 13)",
@@ -288,7 +282,7 @@ async def apple(query: CallbackQuery):
 
 @dp.callback_query_handler(text="ios12")
 async def ios12(query: CallbackQuery):
-    print(log(query=query))
+    log(query=query)
     message = query.message
     await message.answer_video(
         caption="Here is guide how to import calendar to apple IOS 12 devices:",
@@ -301,7 +295,7 @@ async def ios12(query: CallbackQuery):
 
 @dp.callback_query_handler(text="ios14")
 async def ios14(query: CallbackQuery):
-    print(log(query=query))
+    log(query=query)
     message = query.message
     await message.answer_video(
         caption="Here is guide how to import calendar to apple IOS 14 devices:",
@@ -314,7 +308,7 @@ async def ios14(query: CallbackQuery):
 
 @dp.callback_query_handler(text="how_to")
 async def how_to_er(query: CallbackQuery):
-    print(log(query=query))
+    log(query=query)
     message = query.message
     await message.answer(
         text="Choose your platform:",
@@ -326,7 +320,7 @@ async def how_to_er(query: CallbackQuery):
 
 @dp.message_handler(content_types=ContentTypes.ANY)
 async def all_other_messages(message: Message):
-    print(log(message))
+    log(message)
     await message.answer("Type /start")
 
 

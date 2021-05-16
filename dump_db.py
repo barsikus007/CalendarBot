@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy.future import select
 
 from models import Calendar, Events, Students
-from config import async_session
+from utils import async_session
 
 
 async def main():

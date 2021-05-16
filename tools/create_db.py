@@ -3,7 +3,8 @@ import asyncio
 
 import httpx
 
-from config import Base, engine, async_session, get_students_url
+from config import get_students_url
+from utils import Base, engine, async_session
 from dal import StudentsDAL
 
 

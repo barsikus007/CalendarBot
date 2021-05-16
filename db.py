@@ -1,6 +1,6 @@
 from dal import StudentsDAL, EventsDAL, CalendarDAL
 
-from config import async_session
+from utils import async_session
 
 
 async def get_calendars():

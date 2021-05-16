@@ -1,6 +1,6 @@
 from sqlalchemy import Column, ForeignKey, Text, Integer, TIMESTAMP
 
-from config import Base
+from utils import Base
 
 
 class Students(Base):
