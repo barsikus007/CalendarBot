@@ -1,4 +1,5 @@
 from dal import StudentsDAL, EventsDAL, CalendarDAL
+from models import Students
 
 from utils import async_session
 
@@ -57,3 +58,31 @@ async def delete_calendar(student_id: int, rasp_item_id: int):
         async with session.begin():
             calendar = CalendarDAL(session)
             await calendar.delete_calendar(student_id, rasp_item_id)
+
+
+async def get_student_by_fio(fio: str):
+    async with async_session() as session:
+        async with session.begin():
+            students = StudentsDAL(session)
+            return await students.get_student_by_fio(fio)
+
+
+async def get_student_by_telegram_id(telegram_id: int):
+    async with async_session() as session:
+        async with session.begin():
+            students = StudentsDAL(session)
+            return await students.get_student_by_telegram_id(telegram_id)
+
+
+async def update_student_tg_id(fio: str, tg_id: int):
+    async with async_session() as session:
+        async with session.begin():
+            students = StudentsDAL(session)
+            return await students.set_student_tg_id(fio, tg_id)
+
+
+async def set_student_calendar(student_id: int, calendar_id: str):
+    async with async_session() as session:
+        async with session.begin():
+            students = StudentsDAL(session)
+            return await students.set_student_calendar(student_id, calendar_id)

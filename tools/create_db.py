@@ -38,6 +38,7 @@ async def add_data_from_old_db():
 
 
 if __name__ == '__main__':
+    exit('New csv files')
     asyncio.get_event_loop().run_until_complete(reset())
     asyncio.get_event_loop().run_until_complete(put_students_from_site())
     asyncio.get_event_loop().run_until_complete(add_data_from_old_db())

@@ -1,3 +1,4 @@
+import math
 import asyncio
 from hashlib import md5
 from datetime import datetime
@@ -55,8 +56,35 @@ def cut_event(raw_event):
 
 def hash_event(event):
     return md5(
-        str(event['start'] + event['end'] + event['name'] + event['description'] + event['aud']
+        str(event['start'] + event['end'] + event['name'] + event['description'] + event['aud'] + event['color']
             ).encode('UTF-8')).hexdigest()
+
+
+def color_picker(input_color):
+    def distance(c1, c2):
+        (r1, g1, b1) = c1
+        (r2, g2, b2) = c2
+        return math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2)
+
+    input_color = (int(input_color[:2], 16), int(input_color[2:4], 16), int(input_color[4:], 16))
+    google_colors = {
+        (164, 189, 252): '1',
+        (122, 231, 191): '2',
+        (219, 173, 255): '3',
+        (255, 136, 124): '4',
+        (251, 215, 91): '5',
+        (255, 184, 120): '6',
+        (70, 214, 219): '7',
+        (225, 225, 225): '8',
+        (84, 132, 237): '9',
+        (81, 183, 73): '10',
+        (220, 33, 39): '11'
+    }
+    colors = list(google_colors.keys())
+    closest_colors = sorted(colors, key=lambda color: distance(color, input_color))
+    closest_color = closest_colors[0]
+    code = google_colors[closest_color]
+    return code
 
 
 async def calendar_executor(student_id):
@@ -128,6 +156,7 @@ async def send_google_event(service, calendar_id, event, create=False):
         await asyncio.sleep(0.5)
         body = {
             'status': 'confirmed',
+            'colorId': color_picker(event['color'][1:]),
             'summary': event["name"],
             'location': event['aud'],
             'description': f'{event["description"]}',

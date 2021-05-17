@@ -52,11 +52,31 @@ class StudentsDAL:
         )
         return q.scalars().all()
 
-    async def _get_calendar_id(self, student_id: int) -> Students.calendar_id:
+    async def get_student_by_fio(self, fio: str) -> Students:
+        q = await self.session.execute(
+            select(Students).where(Students.fio == fio)
+        )
+        return q.scalars().first()
+
+    async def get_student_by_student_id(self, student_id: int) -> Students:
         q = await self.session.execute(
             select(Students).where(Students.student_id == student_id)
         )
         return q.scalars().first()
+
+    async def get_student_by_telegram_id(self, telegram_id: int) -> Students:
+        q = await self.session.execute(
+            select(Students).where(Students.telegram_id == telegram_id)
+        )
+        return q.scalars().first()
+
+    async def set_student_tg_id(self, fio: str, tg_id: int):
+        student = await self.get_student_by_fio(fio)
+        student.telegram_id = tg_id
+
+    async def set_student_calendar(self, student_id: int, calendar_id: str):
+        student = await self.get_student_by_student_id(student_id)
+        student.calendar_id = calendar_id
 
     async def get_calendars(self) -> List[Students]:
         q = await self.session.execute(
@@ -107,7 +127,7 @@ class CalendarDAL:
     async def delete_calendar(self, student_id: int, rasp_item_id: int):
         await self.session.execute(
             delete(Calendar).where(
-                Calendar.student_id == student_id and Calendar.rasp_item_id == rasp_item_id
+                Calendar.student_id == student_id, Calendar.rasp_item_id == rasp_item_id
             )
         )
 
