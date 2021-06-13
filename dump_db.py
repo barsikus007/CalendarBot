@@ -8,7 +8,7 @@ from models import Calendar, Events, Students
 from utils import async_session
 
 
-async def main():
+async def dump_db():
     Path('csv').mkdir(parents=True, exist_ok=True)
     for table in [Calendar, Events, Students]:
         with open(f'csv/{table.__tablename__}.csv', 'w', encoding='UTF-8') as file:
@@ -26,4 +26,4 @@ async def main():
 
 
 if __name__ == '__main__':
-    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.get_event_loop().run_until_complete(dump_db())

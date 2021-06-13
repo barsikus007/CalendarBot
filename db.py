@@ -1,5 +1,4 @@
 from dal import StudentsDAL, EventsDAL, CalendarDAL
-from models import Students
 
 from utils import async_session
 
