@@ -22,8 +22,9 @@ def error_log(e: Exception, text):
 
 
 def get_calendar_from_site(student_id):
-    response = requests.get(f'{get_calendar_url}{student_id}', timeout=10)
-    raw_events_list = response.json()['data']['raspList']
+    response1 = requests.get(f'{get_calendar_url}{student_id}', timeout=10)
+    response2 = requests.get(f'{get_calendar_url}{student_id}&year=2020-2021', timeout=10)
+    raw_events_list = [*response1.json()['data']['raspList'], *response2.json()['data']['raspList']]
     logger.info(f'Total - {len(raw_events_list)}')
     if len(raw_events_list) == 0:
         raise ValueError('Site returned no data')
@@ -34,7 +35,7 @@ def cut_event(raw_event):
     info_dict = raw_event['info']
     event = {
         'name': raw_event['name'],
-        'color': raw_event['color'],
+        'color': '#f0f0f0' if raw_event['color'] is None else raw_event['color'],
         'start': raw_event['start'],
         'end': raw_event['end'],
         'rasp_item_ids': raw_event['raspItemsIDs'],
@@ -55,8 +56,9 @@ def cut_event(raw_event):
 
 
 def hash_event(event):
-    return md5(
-        str(event['start'] + event['end'] + event['name'] + event['description'] + event['aud'] + event['color']
+    return md5(str(
+        event['start'] + event['end'] + event['name'] +
+        event['description'] + event['aud'] + event['color']
             ).encode('UTF-8')).hexdigest()
 
 
