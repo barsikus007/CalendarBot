@@ -143,14 +143,17 @@ async def setup(message: Message):
         student = await get_student_by_fio(fio)
         if student:
             await update_student_tg_id(fio, message.from_user.id)
-            await get(message)
+            await get(message, fio)
         else:
             await message.answer(f'Wrong name:\n{message.text}\nExample:\n/setup Иванов Иван Иванович')
 
 
 @dp.message_handler(commands='get')
-async def get(message: Message):
-    user_data = await get_student_by_telegram_id(message.from_user.id)
+async def get(message: Message, fio=None):
+    if fio:
+        user_data = await get_student_by_fio(fio)
+    else:
+        user_data = await get_student_by_telegram_id(message.from_user.id)
     if not user_data:
         await message.answer('Please type /setup first!')
         return
