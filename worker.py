@@ -139,6 +139,8 @@ async def calendar_executor(student_id):
 
 async def google_executor(service, to_google, student_id, calendar_id):
     events_to_create, events_to_update, events_to_delete = to_google
+    if len(events_to_delete) > 50:
+        return logger.info('IT SEEMS THAT CALENDAR DROPPED - REJECTING CHANGES')
     for num, event in enumerate(events_to_create):
         logger.info(f'{num+1}/{len(events_to_create)} - Create')
         await send_google_event(service, calendar_id, event, True)
