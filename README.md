@@ -1,2 +1,9 @@
-To deploy, you need to install postgres server, change config.py, install requirements and launch main.py and worker.py
-# TODO
+# "AS IS" project
+To deploy, you need to:
+```
+install postgres server
+install requirements
+change config.py
+configure and launch create_db.py
+launch main.py and worker.py
+```

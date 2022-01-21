@@ -14,7 +14,9 @@ from utils import get_logger, get_service
 from config import TOKEN, admin_id, admin_username, gif_ios12, gif_ios14, gif_google, gif_guide
 
 
-logger = get_logger('main')
+logger = get_logger('bot')
+
+
 service = get_service(logger)
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
@@ -53,9 +55,9 @@ def create_color(mail, calendar_id):
     logger.info('SUCCESS')
 
 
-async def create_calendar(user_id):
+async def create_calendar(student_id, tg_id):
     logger.info('Creating new calendar...')
-    student = await get_student_by_telegram_id(user_id)
+    student = await get_student_by_telegram_id(tg_id)
     _bot = await bot.me
     calendar = {
         'summary': student.to_dict()['short_name'],
@@ -68,20 +70,20 @@ async def create_calendar(user_id):
     }
     created_calendar = service.calendars().insert(body=calendar).execute()
     service.acl().insert(calendarId=created_calendar['id'], body=rule).execute()
-    await set_student_calendar(user_id, created_calendar['id'])
+    await set_student_calendar(student_id, created_calendar['id'])
     logger.info('SUCCESS')
     return created_calendar['id']
 
 
-async def check_calendar_link(calendar_id, user_id):
+async def check_calendar_link(calendar_id, tg_id, student_id):
     try:
         service.calendars().get(calendarId=calendar_id).execute()
         logger.info('Calendar link exist')
     except errors.HttpError as e:
         if e.resp.status == 404:
-            logger.info(f'No calendar with that link... Strange\n{calendar_id}\n{user_id}')
+            logger.info(f'No calendar with that link... Strange\n{calendar_id}\n{tg_id}')
             await report('AHTUNG, 404 CAL ERROR')
-            calendar_id = await create_calendar(user_id)
+            calendar_id = await create_calendar(student_id, tg_id)
         else:
             raise errors.HttpError('Other error (!=404)')
     logger.info(calendar_id)
@@ -97,9 +99,10 @@ async def errors(event: Update = None, exception: BaseException = None):
 async def dump(message: Message):
     if message.from_user.id == admin_id:
         await dump_db()
-        await message.answer_document(document=open('csv/calendar.csv', 'rb'))
-        await message.answer_document(document=open('csv/events.csv', 'rb'))
-        await message.answer_document(document=open('csv/students.csv', 'rb'))
+        await message.answer_document(document=open('csv/dump.tar.xz', 'rb'))
+        # await message.answer_document(document=open('csv/calendar.csv', 'rb'))
+        # await message.answer_document(document=open('csv/events.csv', 'rb'))
+        # await message.answer_document(document=open('csv/students.csv', 'rb'))
 
 
 @dp.message_handler(commands='color')
@@ -143,25 +146,28 @@ async def setup(message: Message):
         student = await get_student_by_fio(fio)
         if student:
             await update_student_tg_id(fio, message.from_user.id)
-            await get(message)
+            await get(message, fio)
         else:
             await message.answer(f'Wrong name:\n{message.text}\nExample:\n/setup Иванов Иван Иванович')
 
 
 @dp.message_handler(commands='get')
-async def get(message: Message):
-    user_data = await get_student_by_telegram_id(message.from_user.id)
+async def get(message: Message, fio=None):
+    if fio:
+        user_data = await get_student_by_fio(fio)
+    else:
+        user_data = await get_student_by_telegram_id(message.from_user.id)
     if not user_data:
         await message.answer('Please type /setup first!')
         return
     await message.answer('Generating your link...')
     calendar_id = user_data.calendar_id
     if calendar_id is None:
-        calendar_id = await create_calendar(user_data.student_id)
+        calendar_id = await create_calendar(user_data.student_id, message.from_user.id)
         if not calendar_id:
             await message.answer(f'Server error - try again later or contact @{admin_username} for report problem')
             return
-    calendar_id = await check_calendar_link(calendar_id, message.from_user.id)
+    calendar_id = await check_calendar_link(calendar_id, message.from_user.id, user_data.student_id)
     base64_link = base64.b64encode(calendar_id.encode('ascii')).decode('ascii').replace('=', '')
     calendar_url = f'https://calendar.google.com/calendar/u/0?cid={base64_link}'
     await message.answer(

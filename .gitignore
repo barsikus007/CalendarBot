@@ -1,8 +1,13 @@
 .idea
+.vscode
+
+*/__pycache__
 venv
+
 csv
-*.log
-*.zip
+logs
+tools
+
 *.json
 *.pickle
 test*.py

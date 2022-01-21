@@ -1,6 +1,7 @@
 import os
-import logging
+import sys
 
+from loguru import logger
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 from googleapiclient.discovery import build
@@ -8,29 +9,27 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
-from config import DB_AUTH
+from config import SQLALCHEMY_URL
 
 
-SQLALCHEMY_URL = f'postgresql+asyncpg://{DB_AUTH["user"]}:{DB_AUTH["password"]}@{DB_AUTH["host"]}:{DB_AUTH["port"]}/{DB_AUTH["database"]}'
 engine = create_async_engine(SQLALCHEMY_URL, future=True, echo=False)
 async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 Base = declarative_base()
 
 
-def get_logger(filename, name=None):
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
-    fmt = logging.Formatter('%(asctime)s: [%(levelname)-5s]: %(message)s', '[%y/%m/%d][%H:%M:%S]')
-    log = logging.StreamHandler()
-    log.setFormatter(fmt)
-    file_log = logging.FileHandler(f'{filename}.log', encoding='UTF-8')
-    file_log.setFormatter(fmt)
-    err_log = logging.FileHandler(f'{filename}_crash.log', encoding='UTF-8')
-    err_log.setLevel(logging.ERROR)
-    err_log.setFormatter(fmt)
-    logger.addHandler(log)
-    logger.addHandler(file_log)
-    logger.addHandler(err_log)
+def get_logger(name):
+    logger.remove()
+    fmt = '<green>{time:YY/MM/DD HH:mm:ss}</> | <lvl>{level:7s}</> | <lvl>{message}</>'
+    logger.add(
+        'logs/' + name + '/{time:YY-MM-DD}.log', level='INFO', format=fmt,
+        filter=lambda _: _['level'].name in ['INFO', 'WARNING'],
+        rotation='00:00', compression='tar.xz', encoding='UTF-8'
+    )
+    logger.add(
+        'logs/' + name + '/{time:YY-MM-DD}-crash.log', level='ERROR', format=fmt,
+        rotation='00:00', encoding='UTF-8'
+    )
+    logger.add(sys.stderr, format=fmt, level='INFO')
     return logger
 
 

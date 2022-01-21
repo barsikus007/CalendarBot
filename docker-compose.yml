@@ -1,0 +1,35 @@
+services:
+  bot:
+    build: .
+    command:
+      python main.py
+    environment:
+      SQLALCHEMY_URL: postgresql+asyncpg://postgres:TODO_CHANGE@postgres:5432/postgres
+    volumes:
+      - ./logs:/app/logs:cached
+    depends_on:
+      - calendar
+
+  calendar:
+    build: .
+    command:
+      python worker.py
+    environment:
+      SQLALCHEMY_URL: postgresql+asyncpg://postgres:TODO_CHANGE@postgres:5432/postgres
+    volumes:
+      - ./logs:/app/logs:cached
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:14-alpine
+    restart: always
+    environment:
+      TZ: Europe/Moscow
+      POSTGRES_PASSWORD: TODO_CHANGE
+    volumes:
+      - db-data:/var/lib/postgresql/data:cached
+
+
+volumes:
+  db-data:

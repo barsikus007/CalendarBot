@@ -6,6 +6,7 @@ from datetime import datetime
 import requests
 from googleapiclient import errors
 
+from create_db import check_if_exists, add_data_from_old_db, put_students_from_site, create_or_connect_and_reset
 from db import get_calendars, get_event, get_calendar
 from db import create_event, create_calendar
 from db import update_event, update_calendar
@@ -15,36 +16,56 @@ from config import get_calendar_url
 
 
 logger = get_logger('worker')
+EVENTS_COOLDOWN = 0.5
+STUDENTS_COOLDOWN = 5
+LOOPS_COOLDOWN = 10
+ERROR_COOLDOWN = 10
 
 
-def error_log(e: Exception, text):
-    logger.error(f'[{e}/{type(e)}]: {text}')
+def error_log(e: Exception, text, trace=False):
+    if trace:
+        logger.exception(f'[{e}/{type(e)}]: {text}')
+    else:
+        logger.error(f'[{e}/{type(e)}]: {text}')
 
 
 def get_calendar_from_site(student_id):
-    response = requests.get(f'{get_calendar_url}{student_id}', timeout=10)
-    raw_events_list = response.json()['data']['raspList']
-    logger.info(f'Total - {len(raw_events_list)}')
-    if len(raw_events_list) == 0:
-        raise ValueError('Site returned no data')
-    return raw_events_list
+    try:
+        response1 = requests.get(f'{get_calendar_url}{student_id}&year=2020-2021', timeout=10)
+        response2 = requests.get(f'{get_calendar_url}{student_id}', timeout=10)
+        raw_events_list = [*response1.json()['data']['raspList'], *response2.json()['data']['raspList']]
+        logger.info(f'Total - {len(raw_events_list)}')
+        if len(raw_events_list) == 0:
+            raise ValueError('Site returned no data')
+        return raw_events_list
+    except ValueError as e:
+        error_log(e, '[503 Service Temporarily Unavailable - ValueError]')
+    except TypeError as e:
+        error_log(e, '[503 Service Temporarily Unavailable - TypeError]')
+    except requests.ReadTimeout as e:
+        error_log(e, '[ReadTimeout]')
+    except requests.ConnectionError as e:
+        error_log(e, '[ConnectionError wtf]')
+    except Exception as e:
+        error_log(e, '[UNKNOWN ERROR IN REQUESTER]', True)
 
 
 def cut_event(raw_event):
     info_dict = raw_event['info']
+    teacher = '' if info_dict['teacher'] is None else info_dict['teacher']
     event = {
         'name': raw_event['name'],
-        'color': raw_event['color'],
+        'color': '#f0f0f0' if raw_event['color'] is None else raw_event['color'],
         'start': raw_event['start'],
         'end': raw_event['end'],
         'rasp_item_ids': raw_event['raspItemsIDs'],
         'aud': info_dict['aud'],
         'link': info_dict['link'],
-        'teacher': '' if info_dict['teacher'] is None else info_dict['teacher'],
+        'teacher': teacher,
         'module_name': info_dict['moduleName'],
         'theme': info_dict['theme'],
         'group_name': info_dict['groupName'],
-        'description': f"Преподаватель: {'' if info_dict['teacher'] is None else info_dict['teacher']}\n"
+        'description': f"Преподаватель: {teacher}\n"
                        f"Модуль: {info_dict['moduleName']}\n"
                        f"Тема: {info_dict['theme']}\n"
                        f"Группа: {info_dict['groupName']}",
@@ -55,8 +76,9 @@ def cut_event(raw_event):
 
 
 def hash_event(event):
-    return md5(
-        str(event['start'] + event['end'] + event['name'] + event['description'] + event['aud'] + event['color']
+    return md5(str(
+        event['start'] + event['end'] + event['name'] +
+        event['description'] + event['aud'] + event['color']
             ).encode('UTF-8')).hexdigest()
 
 
@@ -92,7 +114,10 @@ async def calendar_executor(student_id):
         events_to_create = []
         events_to_update = []
         old_calendar_dict = await get_calendar(student_id)
-        for raw_event in get_calendar_from_site(student_id):
+        calendar_from_site = get_calendar_from_site(student_id)
+        if calendar_from_site is None:
+            return
+        for raw_event in calendar_from_site:
             event = cut_event(raw_event)
             event['hash'] = hash_event(event)
             event['start'] = datetime.strptime(event['start'], '%Y-%m-%dT%H:%M:%S%z')
@@ -123,20 +148,14 @@ async def calendar_executor(student_id):
             logger.info(f'To update - {len(events_to_update)}')
             logger.info(f'To delete - {len(events_to_delete)}')
         return events_to_create, events_to_update, events_to_delete
-    except ValueError as e:
-        error_log(e, '[503 Service Temporarily Unavailable - ValueError]')
-    except TypeError as e:
-        error_log(e, '[503 Service Temporarily Unavailable - TypeError]')
-    except requests.ReadTimeout as e:
-        error_log(e, '[ReadTimeout]')
-    except requests.ConnectionError as e:
-        error_log(e, '[ConnectionError wtf]')
     except Exception as e:
-        error_log(e, '[UNKNOWN ERROR IN CALENDAR EXECUTOR]')
+        error_log(e, '[UNKNOWN ERROR IN CALENDAR EXECUTOR]', True)
 
 
 async def google_executor(service, to_google, student_id, calendar_id):
     events_to_create, events_to_update, events_to_delete = to_google
+    if len(events_to_delete) > 50:
+        return logger.info('IT SEEMS THAT CALENDAR DROPPED - REJECTING CHANGES')
     for num, event in enumerate(events_to_create):
         logger.info(f'{num+1}/{len(events_to_create)} - Create')
         await send_google_event(service, calendar_id, event, True)
@@ -153,7 +172,7 @@ async def google_executor(service, to_google, student_id, calendar_id):
 
 async def send_google_event(service, calendar_id, event, create=False):
     while True:
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(EVENTS_COOLDOWN)
         body = {
             'status': 'confirmed',
             'colorId': color_picker(event['color'][1:]),
@@ -179,50 +198,61 @@ async def send_google_event(service, calendar_id, event, create=False):
         except errors.HttpError as e:
             if e.resp.status == 403:
                 logger.info('403 ERROR, SLEEPING...')
-                await asyncio.sleep(10)
+                await asyncio.sleep(ERROR_COOLDOWN)
             elif not create and e.resp.status == 404:
                 logger.info('404 ERROR, CREATING...')
                 return service.events().insert(calendarId=calendar_id, body=body).execute()
             elif create and e.resp.status == 409:
                 logger.info('409 ERROR, PATCHING...')
                 return service.events().patch(calendarId=calendar_id, eventId=body['id'], body=body).execute()
-            elif e.resp.status == 503:
-                logger.info('503 ERROR SLEEPING...')
-                error_log(e, '[Backend Error]')
-                await asyncio.sleep(10)
+            elif e.resp.status in [500, 503]:
+                logger.info(f'{e.resp.status} ERROR SLEEPING...')
+                error_log(e, f'[{e.resp.status} / GOOGLE IS DOWN]')
+                await asyncio.sleep(ERROR_COOLDOWN)
             else:
-                error_log(e, f'[UNKNOWN HTTP ERROR IN EVENT CREATE]')
+                logger.info('XXX ERROR SLEEPING...')
+                error_log(e, f'[XXX / GOOGLE IS DOWN]')
+                await asyncio.sleep(ERROR_COOLDOWN)
         except Exception as e:
-            error_log(e, '[UNKNOWN ERROR IN EVENT CREATE]')
-            await asyncio.sleep(10)
+            error_log(e, '[UNKNOWN ERROR IN EVENT CREATE]', True)
+            await asyncio.sleep(ERROR_COOLDOWN)
 
 
 async def delete_google_event(service, calendar_id, event_id):
     while True:
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(EVENTS_COOLDOWN)
         try:
             request = service.events().patch(calendarId=calendar_id, eventId=event_id, body={'status': 'cancelled'})
             return request.execute()
         except errors.HttpError as e:
             if e.resp.status == 403:
                 logger.info('403 ERROR SLEEPING...')
-                await asyncio.sleep(10)
-            elif e.resp.status == 503:
-                logger.info('503 ERROR SLEEPING...')
-                error_log(e, '[Backend Error?]')
-                await asyncio.sleep(10)
+                await asyncio.sleep(ERROR_COOLDOWN)
+            elif e.resp.status in [500, 503]:
+                logger.info(f'{e.resp.status} ERROR SLEEPING...')
+                error_log(e, f'[{e.resp.status} / GOOGLE IS DOWN]')
+                await asyncio.sleep(ERROR_COOLDOWN)
             else:
-                error_log(e, f'[UNKNOWN HTTP ERROR IN EVENT DELETE]')
+                logger.info('XXX ERROR SLEEPING...')
+                error_log(e, f'[XXX / GOOGLE IS DOWN]')
+                await asyncio.sleep(ERROR_COOLDOWN)
         # except ConnectionResetError as e:
         #     error_log(e, '[WinError ConnectionResetError]')
         # except OSError as e:
         #     error_log(e, '[OSError]')
         except Exception as e:
-            error_log(e, '[UNKNOWN ERROR IN EVENT DELETE]')
-            await asyncio.sleep(10)
+            error_log(e, '[UNKNOWN ERROR IN EVENT DELETE]', True)
+            await asyncio.sleep(ERROR_COOLDOWN)
 
 
-async def loop():
+async def main():
+    exists = await check_if_exists()
+    logger.info('Database' + (' ' if exists else ' not ') + 'exists!')
+    if not exists:
+        await create_or_connect_and_reset()
+        await put_students_from_site()
+        await add_data_from_old_db()
+        logger.info('Database created!')
     while True:
         try:
             service = get_service(logger)
@@ -234,13 +264,15 @@ async def loop():
                     logger.info(f'Skipping google executor due to error above...')
                 else:
                     await google_executor(service, to_google, student.student_id, student.calendar_id)
-                await asyncio.sleep(5)
+                await asyncio.sleep(STUDENTS_COOLDOWN)
             logger.info('Last user, sleeping...')
-            await asyncio.sleep(10)
+            await asyncio.sleep(LOOPS_COOLDOWN)
         except Exception as e:
-            error_log(e, '[UNKNOWN ERROR IN LOOP]')
-            await asyncio.sleep(60)
+            error_log(e, '[UNKNOWN ERROR IN LOOP]', True)
+            await asyncio.sleep(ERROR_COOLDOWN * 6)
 
 
 if __name__ == '__main__':
-    asyncio.get_event_loop().run_until_complete(loop())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(main())

@@ -18,6 +18,9 @@ class StudentsDAL:
                 print(f'Student {student[0]} - {student[1]} have error in their name\nFix it manually!')
             await self.session.merge(Students(student_id=student[0], fio=student[1]))
         await self.session.execute(
+            delete(Calendar).where(Calendar.student_id.notin_(students_ids))
+        )
+        await self.session.execute(
             delete(Students).where(Students.student_id.notin_(students_ids))
         )
 
