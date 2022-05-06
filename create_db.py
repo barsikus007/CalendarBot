@@ -121,12 +121,15 @@ async def add_data_from_old_db():
                     )
 
 
+async def main():
+    exists = await check_if_exists()
+    if not exists:
+        await create_or_connect_and_reset()
+        await put_students_from_site()
+        await add_data_from_old_db()
+
+
 if __name__ == '__main__':
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-
-    exists = loop.run_until_complete(check_if_exists())
-    if not exists:
-        loop.run_until_complete(create_or_connect_and_reset())
-        loop.run_until_complete(put_students_from_site())
-        loop.run_until_complete(add_data_from_old_db())
+    loop.run_until_complete(main())

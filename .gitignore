@@ -6,9 +6,7 @@ venv
 
 csv
 logs
-tools
+private
 
 *.json
-*.pickle
-test*.py
 config.py

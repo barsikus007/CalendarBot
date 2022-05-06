@@ -20,7 +20,7 @@ logger = get_logger('bot')
 service = get_service(logger)
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
-commands = [
+commands_list = [
     BotCommand(command='/start', description='Start the Bot'),
     BotCommand(command='/help', description='Help page about commands'),
     BotCommand(command='/guide', description='Quick video guide'),
@@ -202,7 +202,7 @@ async def guide(message: Message):
 @dp.message_handler(commands='start')
 async def start_cmd(message: Message):
     if message.from_user.id == admin_id:
-        await bot.set_my_commands(commands)
+        await bot.set_my_commands(commands_list)
     await message.answer(
         'For the first time you need to setup name via /setup\n'
         'After than you can get calendar link via /get\n'

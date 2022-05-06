@@ -16,7 +16,7 @@ from config import get_calendar_url
 
 
 logger = get_logger('worker')
-EVENTS_COOLDOWN = 0.5
+EVENTS_COOLDOWN = 0.1
 STUDENTS_COOLDOWN = 5
 LOOPS_COOLDOWN = 10
 ERROR_COOLDOWN = 10
@@ -52,23 +52,27 @@ def get_calendar_from_site(student_id):
 
 def cut_event(raw_event):
     info_dict = raw_event['info']
-    teacher = '' if info_dict['teacher'] is None else info_dict['teacher']
+    if not raw_event['end']:
+        # All day event (probably - free day), skipping...
+        return
+    teachers = ', '.join(sorted([teacher['name'] for teacher in info_dict['teachers']]))
+    groups = ', '.join(sorted([group['name'] for group in info_dict['groups']]))
     event = {
         'name': raw_event['name'],
-        'color': '#f0f0f0' if raw_event['color'] is None else raw_event['color'],
+        'color': raw_event['color'] or '#f0f0f0',
         'start': raw_event['start'],
         'end': raw_event['end'],
         'rasp_item_ids': raw_event['raspItemsIDs'],
-        'aud': info_dict['aud'],
+        'aud': info_dict['aud'] or '',
         'link': info_dict['link'],
-        'teacher': teacher,
+        'teacher': teachers,
         'module_name': info_dict['moduleName'],
         'theme': info_dict['theme'],
-        'group_name': info_dict['groupName'],
-        'description': f"Преподаватель: {teacher}\n"
+        'group_name': groups,
+        'description': f"Преподаватели: {teachers}\n"
                        f"Модуль: {info_dict['moduleName']}\n"
                        f"Тема: {info_dict['theme']}\n"
-                       f"Группа: {info_dict['groupName']}",
+                       f"Группы: {groups}",
     }
     if event['link']:
         event['description'] = f"{event['link']}\n{event['description']}"
@@ -119,6 +123,9 @@ async def calendar_executor(student_id):
             return
         for raw_event in calendar_from_site:
             event = cut_event(raw_event)
+            if not event:
+                # Skip all day event
+                continue
             event['hash'] = hash_event(event)
             event['start'] = datetime.strptime(event['start'], '%Y-%m-%dT%H:%M:%S%z')
             event['end'] = datetime.strptime(event['end'], '%Y-%m-%dT%H:%M:%S%z')
@@ -172,6 +179,8 @@ async def google_executor(service, to_google, student_id, calendar_id):
 
 async def send_google_event(service, calendar_id, event, create=False):
     while True:
+        # Requests speed is slow, so we don't need cooldown here
+        # Remake this section when this will be slow point
         await asyncio.sleep(EVENTS_COOLDOWN)
         body = {
             'status': 'confirmed',

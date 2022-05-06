@@ -23,7 +23,7 @@ def get_logger(name):
     logger.add(
         'logs/' + name + '/{time:YY-MM-DD}.log', level='INFO', format=fmt,
         filter=lambda _: _['level'].name in ['INFO', 'WARNING'],
-        rotation='00:00', compression='tar.xz', encoding='UTF-8'
+        rotation='00:00', encoding='UTF-8'
     )
     logger.add(
         'logs/' + name + '/{time:YY-MM-DD}-crash.log', level='ERROR', format=fmt,
