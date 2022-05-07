@@ -12,7 +12,7 @@ from db import create_event, create_calendar
 from db import update_event, update_calendar
 from db import delete_calendar
 from utils import get_logger, get_service
-from config import get_calendar_url
+from src.settings import settings
 
 
 logger = get_logger('worker')
@@ -30,9 +30,9 @@ def error_log(e: Exception, text, trace=False):
 
 
 def get_calendar_from_site(student_id):
-    try:
-        response1 = requests.get(f'{get_calendar_url}{student_id}&year=2020-2021', timeout=10)
-        response2 = requests.get(f'{get_calendar_url}{student_id}', timeout=10)
+    try:  # showAll: true; year: 2021-2022
+        response1 = requests.get(f'{settings.GET_CALENDAR_URL}{student_id}&year=2020-2021', timeout=10)
+        response2 = requests.get(f'{settings.GET_CALENDAR_URL}{student_id}', timeout=10)
         raw_events_list = [*response1.json()['data']['raspList'], *response2.json()['data']['raspList']]
         logger.info(f'Total - {len(raw_events_list)}')
         if len(raw_events_list) == 0:

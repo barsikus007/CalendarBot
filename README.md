@@ -1,9 +1,18 @@
 # "AS IS" project
-To deploy, you need to:
+## Configuration
+- Get `credentials.json` from https://developers.google.com/calendar/api/quickstart/python and put it to root of project
+- Change `.env.example` file as you need and rename it to `.env`
+## Run
+To deploy, you need just specify your configs and run it in docker via:
 ```
-install postgres server
-install requirements
-change config.py
-configure and launch create_db.py
-launch main.py and worker.py
+docker compose up -d --build
 ```
+## TODO
+- [ ] dockerize
+- [ ] sqlmodel
+- [ ] refactor database
+- [ ] refactor models
+- [ ] elective calendar
+- [ ] logs
+- [ ] sourcery
+- [ ] env file

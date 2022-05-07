@@ -9,20 +9,20 @@ from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from config import get_students_url, DB_AUTH
+from src.settings import settings
 from utils import Base, engine, async_session
 from dal import StudentsDAL, EventsDAL, CalendarDAL
 
 
 async def create_if_not_exists():
     postgres_engine = create_async_engine(
-        f'postgresql+asyncpg://{DB_AUTH["user"]}:{DB_AUTH["password"]}@{DB_AUTH["host"]}:{DB_AUTH["port"]}/postgres',
+        settings.DATABASE_URL.rsplit('/', 1)[0] + '/postgres',
         echo=False
     )
     postgres_async_session = sessionmaker(postgres_engine, expire_on_commit=False, class_=AsyncSession)
     async with postgres_async_session.begin() as session:
         await session.execute('COMMIT')
-        await session.execute(f'CREATE DATABASE {DB_AUTH["database"]}')
+        await session.execute(f'CREATE DATABASE {settings.POSTGRES_DB}')
 
 
 async def reset():
@@ -51,7 +51,7 @@ async def create_or_connect_and_reset():
 
 
 async def put_students_from_site():
-    students_list = requests.get(get_students_url).json()['data']['allStudent']
+    students_list = requests.get(settings.GET_STUDENTS_URL).json()['data']['allStudent']
     students_list = [[_['studentID'], _['fullName']] for _ in students_list]
     async with async_session() as session:
         async with session.begin():

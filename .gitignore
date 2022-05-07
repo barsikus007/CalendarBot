@@ -8,5 +8,5 @@ csv
 logs
 private
 
+.env
 *.json
-config.py

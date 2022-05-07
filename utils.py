@@ -9,10 +9,10 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
-from config import SQLALCHEMY_URL
+from src.settings import settings
 
 
-engine = create_async_engine(SQLALCHEMY_URL, future=True, echo=False)
+engine = create_async_engine(settings.DATABASE_URL, future=True, echo=False)
 async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 Base = declarative_base()
 
@@ -33,12 +33,9 @@ def get_logger(name):
     return logger
 
 
+# https://developers.google.com/calendar/api/quickstart/python
 def get_service(logger):
     scopes = ['https://www.googleapis.com/auth/calendar']
-    """
-    Shows basic usage of the Google Calendar API.
-    Prints the start and name of the next 10 events on the user's calendar.
-    """
     credentials = None
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first

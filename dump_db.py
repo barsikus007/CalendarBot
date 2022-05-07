@@ -10,10 +10,11 @@ from utils import async_session
 
 
 async def dump_db():
-    Path('csv').mkdir(parents=True, exist_ok=True)
-    with tarfile.open('csv/dump.tar.xz', 'w:xz') as tar:
+    folder = Path('csv')
+    folder.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(folder / 'dump.tar.xz', 'w:xz') as tar:
         for table in [Calendar, Events, Students]:
-            with open(f'csv/{table.__tablename__}.csv', 'w', encoding='UTF-8') as file:
+            with open(folder / f'{table.__tablename__}.csv', 'w', encoding='UTF-8', newline='') as file:
                 out_csv = csv.writer(file)
                 async with async_session() as session:
                     q = await session.execute(
@@ -25,10 +26,12 @@ async def dump_db():
                         out_csv.writerow([getattr(curr, column.name) for column in table.__mapper__.columns])
                         for curr in records
                     ]
-            tar.add(f'csv/{table.__tablename__}.csv')
+            tar.add(folder / f'{table.__tablename__}.csv')
 
 
 if __name__ == '__main__':
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(dump_db())
+    import platform
+
+    if platform.system() == 'Windows':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    asyncio.run(dump_db())

@@ -11,14 +11,14 @@ from db import update_student_tg_id
 from db import set_student_calendar
 from dump_db import dump_db
 from utils import get_logger, get_service
-from config import TOKEN, admin_id, admin_username, gif_ios12, gif_ios14, gif_google, gif_guide
+from src.settings import settings
 
 
 logger = get_logger('bot')
 
 
 service = get_service(logger)
-bot = Bot(token=TOKEN)
+bot = Bot(token=settings.TELEGRAM_TOKEN)
 dp = Dispatcher(bot)
 commands_list = [
     BotCommand(command='/start', description='Start the Bot'),
@@ -39,7 +39,7 @@ class LoggingMiddleware(BaseMiddleware):
 
 
 async def report(text):
-    await bot.send_message(chat_id=admin_id, text=text, disable_notification=True)
+    await bot.send_message(chat_id=settings.ADMIN_ID, text=text, disable_notification=True)
 
 
 def create_color(mail, calendar_id):
@@ -97,7 +97,7 @@ async def errors(event: Update = None, exception: BaseException = None):
 
 @dp.message_handler(commands='dump')
 async def dump(message: Message):
-    if message.from_user.id == admin_id:
+    if message.from_user.id == settings.ADMIN_ID:
         await dump_db()
         await message.answer_document(document=open('csv/dump.tar.xz', 'rb'))
         # await message.answer_document(document=open('csv/calendar.csv', 'rb'))
@@ -126,7 +126,8 @@ async def color(message: Message):
                 await message.answer('Colors was added to your google calendar')
             except Exception as e:
                 await report(f'AHTUNG EXCEPTION:\n{type(e)}\n{e}')
-                await message.answer('Server error - try again later or contact @{admin_username} for report problem')
+                await message.answer(
+                    f'Server error - try again later or contact @{settings.ADMIN_USERNAME} for report problem')
         else:
             await message.answer('Do /setup first')
 
@@ -165,7 +166,8 @@ async def get(message: Message, fio=None):
     if calendar_id is None:
         calendar_id = await create_calendar(user_data.student_id, message.from_user.id)
         if not calendar_id:
-            await message.answer(f'Server error - try again later or contact @{admin_username} for report problem')
+            await message.answer(
+                f'Server error - try again later or contact @{settings.ADMIN_USERNAME} for report problem')
             return
     calendar_id = await check_calendar_link(calendar_id, message.from_user.id, user_data.student_id)
     base64_link = base64.b64encode(calendar_id.encode('ascii')).decode('ascii').replace('=', '')
@@ -195,13 +197,13 @@ async def help_cmd(message: Message):
 async def guide(message: Message):
     await message.answer_video(
         caption='Take it!',
-        video=gif_guide
+        video=settings.GIF_GUIDE,
     )
 
 
 @dp.message_handler(commands='start')
 async def start_cmd(message: Message):
-    if message.from_user.id == admin_id:
+    if message.from_user.id == settings.ADMIN_ID:
         await bot.set_my_commands(commands_list)
     await message.answer(
         'For the first time you need to setup name via /setup\n'
@@ -218,7 +220,7 @@ async def google(query: CallbackQuery):
     await message.answer_video(
         caption='How to import calendar to normal devices:\n'
                 'https://calendar.google.com/calendar/r/settings/addcalendar',
-        video=gif_google,
+        video=settings.GIF_GOOGLE,
         reply_markup=InlineKeyboardMarkup().row(
             InlineKeyboardButton('How to add?', callback_data='how_to')))
     try:
@@ -248,7 +250,7 @@ async def ios12(query: CallbackQuery):
     message = query.message
     await message.answer_video(
         caption='How to import calendar to apple IOS 12 devices:',
-        video=gif_ios12,
+        video=settings.GIF_IOS12,
         reply_markup=InlineKeyboardMarkup().row(
             InlineKeyboardButton('How to add?', callback_data='how_to')))
     try:
@@ -263,7 +265,7 @@ async def ios14(query: CallbackQuery):
     message = query.message
     await message.answer_video(
         caption='How to import calendar to apple IOS 14 devices:',
-        video=gif_ios14,
+        video=settings.GIF_IOS14,
         reply_markup=InlineKeyboardMarkup().row(
             InlineKeyboardButton('How to add?', callback_data='how_to')))
     try:
