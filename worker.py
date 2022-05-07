@@ -260,6 +260,7 @@ async def main():
         await put_students_from_site()
         await add_data_from_old_db()
         logger.info('Database created!')
+    exit()
     while True:
         try:
             service = get_service(logger)

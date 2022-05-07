@@ -1,3 +1,5 @@
+from sqlmodel import select
+
 import csv
 import asyncio
 from datetime import datetime
@@ -9,6 +11,8 @@ from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+from src.db import get_session
+from src.models import Student
 from src.settings import settings
 from utils import Base, engine, async_session
 from dal import StudentsDAL, EventsDAL, CalendarDAL
@@ -62,6 +66,8 @@ async def put_students_from_site():
 async def add_data_from_old_db():
     with open('csv/students.csv', 'r', encoding='UTF-8') as f:
         in_csv = csv.reader(f)
+        session = await get_session()
+        students = await session.exec(select(Student))
         async with async_session() as session:
             async with session.begin():
                 students = StudentsDAL(session)
