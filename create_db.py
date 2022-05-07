@@ -124,6 +124,7 @@ async def add_data_from_old_db():
 async def main():
     exists = await check_if_exists()
     if not exists:
+        # TODO check csv folder existence
         await create_or_connect_and_reset()
         await put_students_from_site()
         await add_data_from_old_db()
