@@ -26,6 +26,7 @@ class EventInfo(BaseModel):
     moduleName: str
     categoryID: int | None
     moduleID: int | None
+    # ID of event inside module (similar if same theme)
     moduleDisID: int | None
     theme: str
     aud: str | None
@@ -35,10 +36,13 @@ class EventInfo(BaseModel):
     teacherFullName: None
     teacherEmail: None
     teacherNumberMobile: None
+    # https://example.com/photoP/{photoPath}
     photoPath: None
     teacherID: None
+    # https://example.com/WebApp/#/PersonalKab/{userID}
     userID: None
     raspItemID: int
+    # ID based on university timetable (1 - 5) (6 - custom)
     timeZanID: int
     teachersNames: str
     groupName: str
@@ -64,16 +68,22 @@ class Event(BaseModel):
 
 
 class ResponseData(BaseModel):
+    # frontend settings
     allowEdit: bool
     isRaspDisp: bool
-    raspList: list[Event]
     showExportButton: bool
+    # list of schedule events
+    raspList: list[Event]
+    # idk
     userCategories: conlist(None, max_items=0)
 
 
 class Response(BaseModel):
+    # response data
     data: ResponseData
+    # info message
     msg: str
+    # state of success (-1, 1)
     state: int
 
 
