@@ -23,7 +23,3 @@ COPY main.py db.py dal.py utils.py models.py dump_db.py create_db.py worker.py .
 COPY csv ./csv
 
 CMD ["alembic", "upgrade", "head", "&&", "python", "main.py"]
-
-
-
-

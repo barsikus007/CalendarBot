@@ -13,7 +13,6 @@ asyncpg
 alembic
 sqlmodel
 
-# requests TODO
 httpx
 
 loguru

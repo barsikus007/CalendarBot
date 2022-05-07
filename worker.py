@@ -3,7 +3,7 @@ import asyncio
 from hashlib import md5
 from datetime import datetime
 
-import requests
+import httpx
 from googleapiclient import errors
 
 from create_db import check_if_exists, add_data_from_old_db, put_students_from_site, create_or_connect_and_reset
@@ -31,8 +31,8 @@ def error_log(e: Exception, text, trace=False):
 
 def get_calendar_from_site(student_id):
     try:  # showAll: true; year: 2021-2022
-        response1 = requests.get(f'{settings.GET_CALENDAR_URL}{student_id}&year=2020-2021', timeout=10)
-        response2 = requests.get(f'{settings.GET_CALENDAR_URL}{student_id}', timeout=10)
+        response1 = httpx.get(f'{settings.GET_CALENDAR_URL}{student_id}&year=2020-2021', timeout=10)
+        response2 = httpx.get(f'{settings.GET_CALENDAR_URL}{student_id}', timeout=10)
         raw_events_list = [*response1.json()['data']['raspList'], *response2.json()['data']['raspList']]
         logger.info(f'Total - {len(raw_events_list)}')
         if len(raw_events_list) == 0:
@@ -42,10 +42,8 @@ def get_calendar_from_site(student_id):
         error_log(e, '[503 Service Temporarily Unavailable - ValueError]')
     except TypeError as e:
         error_log(e, '[503 Service Temporarily Unavailable - TypeError]')
-    except requests.ReadTimeout as e:
-        error_log(e, '[ReadTimeout]')
-    except requests.ConnectionError as e:
-        error_log(e, '[ConnectionError wtf]')
+    except httpx.TimeoutException as e:
+        error_log(e, '[Timeout]')
     except Exception as e:
         error_log(e, '[UNKNOWN ERROR IN REQUESTER]', True)
 

@@ -2,7 +2,7 @@ import csv
 import asyncio
 from datetime import datetime
 
-import requests
+import httpx
 from asyncpg.exceptions import ConnectionDoesNotExistError
 
 from sqlalchemy import inspect
@@ -51,7 +51,7 @@ async def create_or_connect_and_reset():
 
 
 async def put_students_from_site():
-    students_list = requests.get(settings.GET_STUDENTS_URL).json()['data']['allStudent']
+    students_list = httpx.get(settings.GET_STUDENTS_URL).json()['data']['allStudent']
     students_list = [[_['studentID'], _['fullName']] for _ in students_list]
     async with async_session() as session:
         async with session.begin():
