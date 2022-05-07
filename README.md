@@ -4,7 +4,7 @@
 - Change `.env.example` file as you need and rename it to `.env`
 ## Run
 To deploy, you need just specify your configs and run it in docker via:
-```
+```bash
 docker compose up -d --build
 ```
 ## TODO
