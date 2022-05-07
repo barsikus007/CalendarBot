@@ -16,4 +16,4 @@ sqlmodel
 httpx
 
 loguru
-pydantic[dotenv]
+pydantic[email,dotenv]
