@@ -7,15 +7,15 @@ from sqlmodel import SQLModel, Field
 __all__ = ['Student', 'Event', 'Calendar']
 
 
-class Student(SQLModel, table=True):  # student_id, nullable=False
-    id: int | None = Field(default=None, primary_key=True)
+class Student(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True, nullable=False)
     fio: str
     telegram_id: int | None
     calendar_id: EmailStr | None
 
 
-class Event(SQLModel, table=True):  # rasp_item_id, nullable=False
-    id: int | None = Field(default=None, primary_key=True)
+class Event(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True, nullable=False)
     name = str
     color: str
     start = datetime
@@ -30,11 +30,11 @@ class Event(SQLModel, table=True):  # rasp_item_id, nullable=False
     hash: str
 
 
-class Calendar(SQLModel, table=True):  # nullable=False
+class Calendar(SQLModel, table=True):
     student_id: int | None = Field(
-        default=None, foreign_key='students.id', primary_key=True
+        default=None, foreign_key='student.id', primary_key=True, nullable=False
     )
-    event_id: int | None = Field(  # rasp_item_id
-        default=None, foreign_key='events.id', primary_key=True
+    event_id: int | None = Field(
+        default=None, foreign_key='event.id', primary_key=True, nullable=False
     )
     hash: str
