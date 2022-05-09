@@ -17,16 +17,13 @@ class Student(SQLModel, table=True):
 
 class Event(SQLModel, table=True):
     id: int = Field(primary_key=True)
-    name: str
-    color: str
     start: datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False))
     end: datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False))
-    aud: str | None
+    name: str
+    color: str
+    aud: str
     link: str | None
-    teachers: str | None  # +s
-    module_name: str
-    theme: str
-    group_names: str  # +s
+    group_names: str
     description: str
     hash: str
 

@@ -77,9 +77,6 @@ def cut_event(raw_event: ResponseEvent):
         end=raw_event.end,
         aud=info_dict.aud or '',
         link=info_dict.link,
-        teachers=teachers,
-        module_name=info_dict.moduleName,  # TODO ?
-        theme=info_dict.theme,  # TODO ?
         group_names=groups,
         description=f'Преподаватели: {teachers}\n'
                     f'Модуль: {info_dict.moduleName}\n'

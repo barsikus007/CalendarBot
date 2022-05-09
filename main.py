@@ -185,6 +185,28 @@ async def get(message: Message, fio=None):
             InlineKeyboardButton('How to add?', callback_data='how_to')))
 
 
+@dp.message_handler(commands='electives')
+async def electives(message: Message):
+    calendar_id = settings.ELECTIVES_CALENDAR_ID
+    base64_link = base64.b64encode(calendar_id.encode('ascii')).decode('ascii').replace('=', '')
+    calendar_url = f'https://calendar.google.com/calendar/u/0?cid={base64_link}'
+    await message.answer(
+        f'Ok here is electives Google Calendar id:\n'
+        f'{calendar_id}\n'
+        f'\n'
+        f'If you are PC user use calendar link instead:\n'
+        f'{calendar_url}\n'
+        f'If your are APPLE user import ics file instead:\n'
+        f'https://calendar.google.com/calendar/ical/{calendar_id.split("@")[0]}%40group.calendar.google.com/public/basic.ics',
+        reply_markup=InlineKeyboardMarkup().row(
+            InlineKeyboardButton('How to add?', callback_data='how_to')))
+
+
+@dp.message_handler(commands='logo')
+async def logo_gen(message: Message):
+    await message.answer('soon')
+
+
 @dp.message_handler(commands='help')
 async def help_cmd(message: Message):
     await message.answer(

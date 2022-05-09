@@ -12,5 +12,4 @@ Then check logs for link to auth your credentials
 https://github.com/barsikus007/xalendar
 ## TODO
 - [ ] logo generator
-- [ ] refactor database
 - [ ] logs

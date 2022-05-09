@@ -14,7 +14,7 @@ async def dump_db():
     folder.mkdir(parents=True, exist_ok=True)
     with tarfile.open(folder / 'dump.tar.xz', 'w:xz') as tar:
         for table in [Calendar, Event, Student]:
-            with open(folder / f'{table.__tablename__}.csv', 'w', encoding='UTF-8', newline='') as file:
+            with open(f'csv/{table.__tablename__}.csv', 'w', encoding='UTF-8', newline='') as file:
                 out_csv = csv.writer(file)
                 async with async_session() as session:
                     q = await session.execute(
@@ -26,7 +26,7 @@ async def dump_db():
                         out_csv.writerow([getattr(curr, column.name) for column in table.__mapper__.columns])
                         for curr in records
                     ]
-            tar.add(folder / f'{table.__tablename__}.csv')
+            tar.add(f'csv/{table.__tablename__}.csv')
     return folder / 'dump.tar.xz'
 
 
