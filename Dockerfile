@@ -20,4 +20,3 @@ COPY alembic.ini .
 
 COPY token.json .
 COPY main.py utils.py dump_db.py create_db.py worker.py ./
-COPY csv ./csv

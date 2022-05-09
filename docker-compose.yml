@@ -6,6 +6,7 @@ services:
       - .env
     volumes:
       - ./logs:/app/logs:cached
+      - ./csv:/app/csv
       - ./alembic:/app/alembic
       - ./src:/app/src
     depends_on:
