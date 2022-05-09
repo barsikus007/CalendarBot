@@ -16,6 +16,7 @@ class Settings(BaseSettings):
                                 f'{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
 
     GET_CALENDAR_URL: str
+    ELECTIVES_CALENDAR_ID: str
     GIF_IOS12: str
     GIF_IOS14: str
     GIF_GOOGLE: str

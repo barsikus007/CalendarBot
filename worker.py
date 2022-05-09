@@ -9,7 +9,7 @@ from googleapiclient import errors
 
 from utils import get_logger, get_service
 from src.schema import Event as ResponseEvent
-from src.models import Event, Calendar
+from src.models import Event, Calendar, Student
 from src.settings import settings
 from src.crud.student import get_students_with_calendars
 from src.crud.event import create_event, update_event, get_event
@@ -30,10 +30,16 @@ def error_log(e: Exception, text, trace=False):
 
 
 def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
-    try:  # showAll: true; year: 2021-2022
-        response1 = httpx.get(f'{settings.GET_CALENDAR_URL}{student_id}&year=2020-2021', timeout=10)
-        response2 = httpx.get(f'{settings.GET_CALENDAR_URL}{student_id}', timeout=10)
-        raw_events_list = [*response1.json()['data']['raspList'], *response2.json()['data']['raspList']]
+    try:  # year: 2021-2022
+        responses = [
+            httpx.get(f'{settings.GET_CALENDAR_URL}course=0&course=1&course=2&showAll=true', timeout=10)
+        ] if student_id == 200000 else [
+            httpx.get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2020-2021', timeout=10),
+            httpx.get(f'{settings.GET_CALENDAR_URL}studentID={student_id}', timeout=10)
+        ]
+        raw_events_list = []
+        for response in responses:
+            raw_events_list.extend(response.json()['data']['raspList'])
         events_list: list[ResponseEvent] = [ResponseEvent(**event) for event in raw_events_list]
         logger.info(f'Total - {len(events_list):4d}')
         if not events_list:
@@ -259,7 +265,11 @@ async def parser(logger):
         try:
             service = get_service(logger)
             calendars = await get_students_with_calendars()
-            for num, student in enumerate(calendars):
+            for num, student in enumerate(
+                    [Student(
+                        id=200000, fio='ELECTIVES', calendar_id=settings.ELECTIVES_CALENDAR_ID, telegram_id=1
+                    ), *calendars]
+            ):
                 logger.info(f'({num + 1}/{len(calendars)}) #{student.id} - {student.fio}')
                 to_google = await calendar_executor(student.id)
                 if to_google is None:

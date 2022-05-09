@@ -11,7 +11,7 @@ docker exec $(docker ps -aqf "name=calendarbot-calendar") python3 ./create_db.py
 ## Frontend
 https://github.com/barsikus007/xalendar
 ## TODO
-- [ ] dockerize
+- [ ] logo generator
 - [ ] refactor database
 - [ ] refactor models
 - [ ] elective calendar
