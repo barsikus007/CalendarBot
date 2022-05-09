@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 import sqlmodel
 
-from create_db import import_dump_for_alembic
+from src.db.import_db import import_dump_for_alembic
 
 
 # revision identifiers, used by Alembic.

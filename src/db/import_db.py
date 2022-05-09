@@ -1,13 +1,14 @@
 import csv
 import asyncio
 from datetime import datetime
+from pathlib import Path
 
 from src.db import async_session
 from src.models import Calendar, Event, Student
 
 
-def get_students():
-    with open('csv/students.csv', 'r', encoding='UTF-8') as f:
+def get_students(folder):
+    with open(folder / 'students.csv', 'r', encoding='UTF-8') as f:
         reader = csv.reader(f)
         return [
             Student(
@@ -19,8 +20,8 @@ def get_students():
         ]
 
 
-def get_events():
-    with open('csv/events.csv', 'r', encoding='UTF-8') as f:
+def get_events(folder):
+    with open(folder / 'events.csv', 'r', encoding='UTF-8') as f:
         reader = csv.reader(f)
         return [
             Event(
@@ -41,8 +42,8 @@ def get_events():
         ]
 
 
-def get_calendars():
-    with open('csv/calendar.csv', 'r', encoding='UTF-8') as f:
+def get_calendars(folder):
+    with open(folder / 'calendar.csv', 'r', encoding='UTF-8') as f:
         reader = csv.reader(f)
         return [
             Calendar(
@@ -54,9 +55,10 @@ def get_calendars():
 
 
 def import_dump_for_alembic():
-    students = get_students()
-    events = get_events()
-    calendars = get_calendars()
+    folder = Path('../../csv')
+    students = get_students(folder)
+    events = get_events(folder)
+    calendars = get_calendars(folder)
     return (
         [_.dict() for _ in students],
         [_.dict() for _ in events],
@@ -65,11 +67,15 @@ def import_dump_for_alembic():
 
 
 async def import_dump():
+    folder = Path('../../csv')
+    students = get_students(folder)
+    events = get_events(folder)
+    calendars = get_calendars(folder)
     async with async_session() as session:
-        [session.add(_) for _ in get_students()]
-        [session.add(_) for _ in get_events()]
+        [session.add(_) for _ in students]
+        [session.add(_) for _ in events]
         await session.commit()
-        [session.add(_) for _ in get_calendars()]
+        [session.add(_) for _ in calendars]
         await session.commit()
 
 

@@ -15,6 +15,7 @@ from src.crud.student import get_students_with_calendars
 from src.crud.event import create_event, update_event, get_event
 from src.crud.calendar import create_calendar, update_calendar, delete_calendar, get_calendar
 
+
 logger = get_logger('worker')
 EVENTS_COOLDOWN = 0.1
 STUDENTS_COOLDOWN = 5

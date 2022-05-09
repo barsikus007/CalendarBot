@@ -18,5 +18,5 @@ RUN pip install --no-cache-dir /wheels/*
 
 COPY alembic.ini .
 
-COPY token.json .
+COPY credentials.json .
 COPY main.py utils.py dump_db.py create_db.py worker.py ./

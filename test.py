@@ -4,7 +4,7 @@ from worker import get_calendar_from_site
 
 
 async def main():
-    await get_calendar_from_site()
+    get_calendar_from_site(200000)
 
 
 if __name__ == '__main__':
