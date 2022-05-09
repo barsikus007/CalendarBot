@@ -98,8 +98,8 @@ async def errors(event: Update = None, exception: BaseException = None):
 @dp.message_handler(commands='dump')
 async def dump(message: Message):
     if message.from_user.id == settings.ADMIN_ID:
-        await dump_db()
-        await message.answer_document(document=open('csv/dump.tar.xz', 'rb'))
+        dump = await dump_db()
+        await message.answer_document(document=open(dump, 'rb'))
         # await message.answer_document(document=open('csv/calendar.csv', 'rb'))
         # await message.answer_document(document=open('csv/events.csv', 'rb'))
         # await message.answer_document(document=open('csv/students.csv', 'rb'))

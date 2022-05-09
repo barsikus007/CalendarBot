@@ -27,6 +27,7 @@ async def dump_db():
                         for curr in records
                     ]
             tar.add(folder / f'{table.__tablename__}.csv')
+    return folder / 'dump.tar.xz'
 
 
 if __name__ == '__main__':
