@@ -40,9 +40,9 @@ def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
         raw_events_list = []
         for response in responses:
             raw_events_list.extend(response.json()['data']['raspList'])
-        events_list: list[ResponseEvent] = [ResponseEvent(**event) for event in raw_events_list]
+        events_list = [ResponseEvent(**event) for event in raw_events_list]
         if student_id == 200000:
-            events_list = [event for event in raw_events_list if event.info.categoryID in [2, 3]]
+            events_list = [event for event in events_list if event.info.categoryID in [2, 3]]
         logger.info(f'Total - {len(events_list):4d}')
         if not events_list:
             raise ValueError('Site returned no data')
