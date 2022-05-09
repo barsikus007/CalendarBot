@@ -19,10 +19,10 @@ async def get_student_by_fio(fio: str) -> Student:
         )).first()
 
 
-async def get_student_by_student_id(fio: str) -> Student:
+async def get_student_by_student_id(student_id: int) -> Student:
     async with async_session() as session:
         return (await session.exec(
-            select(Student).where(Student.fio == fio)
+            select(Student).where(Student.id == student_id)
         )).first()
 
 

@@ -18,5 +18,8 @@ loguru
 apscheduler
 
 # pydantic[email,dotenv]
+pydantic
 python-dotenv
 email-validator
+
+pillow

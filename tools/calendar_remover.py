@@ -2,7 +2,7 @@ import asyncio
 
 from googleapiclient import errors
 
-from crud import get_students_with_calendars
+from src.crud.student import get_students_with_calendars
 from utils import get_logger, get_service
 from worker import delete_google_event
 
@@ -25,8 +25,7 @@ async def get_all_google_events(service, calendar_id):
     while True:
         await asyncio.sleep(0.5)
         try:
-            google_events = service.events().list(calendarId=calendar_id, maxResults=2500).execute()['items']
-            return google_events
+            return service.events().list(calendarId=calendar_id, maxResults=2500).execute()['items']
         except errors.HttpError as e:
             error_log(e, '[Unknown calendar events error]')
         except Exception as e:
@@ -36,7 +35,7 @@ async def get_all_google_events(service, calendar_id):
 
 async def main():
     try:
-        exit('Lock from misclick')
+        input('Lock from miss-click')
         service = get_service(logger)
         calendars = await get_students_with_calendars()
         for num, student in enumerate(calendars):

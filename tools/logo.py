@@ -13,7 +13,7 @@ def count_cords(middle, middle_angle, time, middle_angle_first, big_r):
     angle = middle_angle_first + middle_angle * time
     x = x + big_r * round(cos(radians(angle)), 5)
     y = y - big_r * round(sin(radians(angle)), 5)
-    return (int(x), int(y))
+    return int(x), int(y)
 
 
 def count_points(cords, a, n):
@@ -77,7 +77,7 @@ def make_image(
             elif len(color) == 3:
                 color_x, color_y, color_z = color
                 step_x, step_y, step_z = color_x//n, color_y//n, color_z//n
-                color_1 = (abs(color_x-(i)*step_x), abs(color_y-(i)*step_y), abs(color_z-(i)*step_z))
+                color_1 = (abs(color_x - i * step_x), abs(color_y - i * step_y), abs(color_z - i * step_z))
                 # color_1 = (color_x-(n-i)*step, color_y-(n-i)*step, color_z-(n-i)*step)
                 # color_1 = (color_x-(n-i)*step, color_y-(n-i)*step, color_z-(n-i)*step)
                 print(color_1)

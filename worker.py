@@ -15,7 +15,6 @@ from src.crud.student import get_students_with_calendars
 from src.crud.event import create_event, update_event, get_event
 from src.crud.calendar import create_calendar, update_calendar, delete_calendar, get_calendar
 
-
 logger = get_logger('worker')
 EVENTS_COOLDOWN = 0.1
 STUDENTS_COOLDOWN = 5
@@ -35,11 +34,11 @@ def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
         response1 = httpx.get(f'{settings.GET_CALENDAR_URL}{student_id}&year=2020-2021', timeout=10)
         response2 = httpx.get(f'{settings.GET_CALENDAR_URL}{student_id}', timeout=10)
         raw_events_list = [*response1.json()['data']['raspList'], *response2.json()['data']['raspList']]
-        raw_events_list: list[ResponseEvent] = [ResponseEvent(**event) for event in raw_events_list]
-        logger.info(f'Total - {len(raw_events_list):4d}')
-        if len(raw_events_list) == 0:
+        events_list: list[ResponseEvent] = [ResponseEvent(**event) for event in raw_events_list]
+        logger.info(f'Total - {len(events_list):4d}')
+        if not events_list:
             raise ValueError('Site returned no data')
-        return raw_events_list
+        return events_list
     except ValidationError as e:
         error_log(e, '[ValidationError]')
     except ValueError as e:
@@ -58,10 +57,7 @@ def cut_event(raw_event: ResponseEvent):
         # All day event (probably - free day), skipping...
         return
     event_ids = raw_event.raspItemsIDs
-    if len(event_ids) > 1:
-        event_id = sum(event_ids)  # May have troubles
-    else:
-        event_id = event_ids[0]
+    event_id = sum(event_ids) if len(event_ids) > 1 else event_ids[0]  # sum may have troubles
     teachers = ', '.join(sorted([teacher.name for teacher in info_dict.teachers]))
     groups = ', '.join(sorted([group.name for group in info_dict.groups]))
     event = Event(
@@ -83,6 +79,7 @@ def cut_event(raw_event: ResponseEvent):
     )
     if event.link:
         event.description = f'{event.link}\n{event.description}'
+    event.hash = hash_event(event)
     return event
 
 
@@ -96,7 +93,7 @@ def hash_event(event: Event):
     return md5(str(
         start + end + event.name +
         event.description + event.aud + event.color
-            ).encode('UTF-8')).hexdigest()
+    ).encode('UTF-8')).hexdigest()
 
 
 def color_picker(input_color):
@@ -139,7 +136,6 @@ async def calendar_executor(student_id):
             if not event:
                 # Skip all day event
                 continue
-            event.hash = hash_event(event)
             event_from_db = await get_event(event.id)
             if event_from_db is None:
                 await create_event(event)
@@ -152,7 +148,7 @@ async def calendar_executor(student_id):
                 old_calendar_dict.pop(event.id)
             else:
                 old_calendar_dict.pop(event.id)
-        events_to_delete = [_ for _ in old_calendar_dict]
+        events_to_delete = list(old_calendar_dict)
         if [] == events_to_create == events_to_update == events_to_delete:
             logger.info('Nothing to change')
         else:
@@ -165,24 +161,24 @@ async def calendar_executor(student_id):
 
 
 async def google_executor(
-            service,
-            to_google: tuple[list[Event], list[Event], list[Event]],
-            student_id: int,
-            calendar_id: str,
-    ):
+        service,
+        to_google: tuple[list[Event], list[Event], list[int]],
+        student_id: int,
+        calendar_id: str,
+):
     events_to_create, events_to_update, events_to_delete = to_google
     if len(events_to_delete) > 50:
         return logger.info('IT SEEMS THAT CALENDAR DROPPED - REJECTING CHANGES')
     for num, event in enumerate(events_to_create):
-        logger.info(f'{num+1:4d}/{len(events_to_create):4d} - Create')
+        logger.info(f'{num + 1:4d}/{len(events_to_create):4d} - Create')
         await send_google_event(service, calendar_id, event, True)
         await create_calendar(Calendar(student_id=student_id, event_id=event.id, hash=event.hash))
     for num, event in enumerate(events_to_update):
-        logger.info(f'{num+1:4d}/{len(events_to_update):4d} - Update')
+        logger.info(f'{num + 1:4d}/{len(events_to_update):4d} - Update')
         await send_google_event(service, calendar_id, event)
         await update_calendar(Calendar(student_id=student_id, event_id=event.id, hash=event.hash))
     for num, event_id in enumerate(events_to_delete):
-        logger.info(f'{num+1:4d}/{len(events_to_delete):4d} - Delete')
+        logger.info(f'{num + 1:4d}/{len(events_to_delete):4d} - Delete')
         await delete_google_event(service, calendar_id, event_id)
         await delete_calendar(student_id, event_id)
 
@@ -230,7 +226,7 @@ async def send_google_event(service, calendar_id, event: Event, create=False):
                 await asyncio.sleep(ERROR_COOLDOWN)
             else:
                 logger.info('XXX ERROR SLEEPING...')
-                error_log(e, f'[XXX / GOOGLE IS DOWN]')
+                error_log(e, '[XXX / GOOGLE IS DOWN]')
                 await asyncio.sleep(ERROR_COOLDOWN)
         except Exception as e:
             error_log(e, '[UNKNOWN ERROR IN EVENT CREATE]', True)
@@ -246,19 +242,13 @@ async def delete_google_event(service, calendar_id, event_id):
         except errors.HttpError as e:
             if e.resp.status == 403:
                 logger.info('403 ERROR SLEEPING...')
-                await asyncio.sleep(ERROR_COOLDOWN)
             elif e.resp.status in [500, 503]:
                 logger.info(f'{e.resp.status} ERROR SLEEPING...')
                 error_log(e, f'[{e.resp.status} / GOOGLE IS DOWN]')
-                await asyncio.sleep(ERROR_COOLDOWN)
             else:
                 logger.info('XXX ERROR SLEEPING...')
-                error_log(e, f'[XXX / GOOGLE IS DOWN]')
-                await asyncio.sleep(ERROR_COOLDOWN)
-        # except ConnectionResetError as e:
-        #     error_log(e, '[WinError ConnectionResetError]')
-        # except OSError as e:
-        #     error_log(e, '[OSError]')
+                error_log(e, '[XXX / GOOGLE IS DOWN]')
+            await asyncio.sleep(ERROR_COOLDOWN)
         except Exception as e:
             error_log(e, '[UNKNOWN ERROR IN EVENT DELETE]', True)
             await asyncio.sleep(ERROR_COOLDOWN)

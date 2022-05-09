@@ -14,7 +14,7 @@ def get_students():
                 id=int(row[0]),
                 fio=row[1],
                 telegram_id=int(row[2]) if row[2] else None,
-                calendar_id=row[3] if row[3] else None,
+                calendar_id=row[3] or None,
             ) for row in reader if reader.line_num != 1
         ]
 
@@ -29,9 +29,9 @@ def get_events():
                 color=row[4],
                 start=datetime.strptime(row[1], '%Y-%m-%d %H:%M:%S%z'),
                 end=datetime.strptime(row[2], '%Y-%m-%d %H:%M:%S%z'),
-                aud=row[5] if row[5] else None,
-                link=row[6] if row[6] else None,
-                teachers=row[7] if row[7] else None,
+                aud=row[5] or None,
+                link=row[6] or None,
+                teachers=row[7] or None,
                 module_name=row[8],
                 theme=row[9],
                 group_names=row[10],

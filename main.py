@@ -61,7 +61,7 @@ async def create_calendar(student_id, tg_id):
     student = await get_student_by_telegram_id(tg_id)
     _bot = await bot.me
     calendar = {
-        'summary': student.to_dict()['short_name'],
+        'summary': student.dict()['short_name'],
         'description': f'Generated and updating by @{_bot.username}',
         'timeZone': 'Europe/Moscow'
     }
@@ -81,12 +81,11 @@ async def check_calendar_link(calendar_id, tg_id, student_id):
         service.calendars().get(calendarId=calendar_id).execute()
         logger.info('Calendar link exist')
     except errors.HttpError as e:
-        if e.resp.status == 404:
-            logger.info(f'No calendar with that link... Strange\n{calendar_id}\n{tg_id}')
-            await report('AHTUNG, 404 CAL ERROR')
-            calendar_id = await create_calendar(student_id, tg_id)
-        else:
-            raise errors.HttpError('Other error (!=404)')
+        if e.resp.status != 404:
+            raise errors.HttpError('Other error (!=404)') from e
+        logger.info(f'No calendar with that link... Strange\n{calendar_id}\n{tg_id}')
+        await report('AHTUNG, 404 CAL ERROR')
+        calendar_id = await create_calendar(student_id, tg_id)
     logger.info(calendar_id)
     return calendar_id
 

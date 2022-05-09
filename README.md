@@ -16,4 +16,3 @@ https://github.com/barsikus007/xalendar
 - [ ] refactor models
 - [ ] elective calendar
 - [ ] logs
-- [ ] sourcery
