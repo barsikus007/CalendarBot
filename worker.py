@@ -268,11 +268,7 @@ async def parser(logger):
         try:
             service = get_service(logger)
             calendars = await get_students_with_calendars()
-            for num, student in enumerate(
-                    [Student(
-                        id=200000, fio='ELECTIVES', calendar_id=settings.ELECTIVES_CALENDAR_ID, telegram_id=1
-                    ), *calendars]
-            ):
+            for num, student in enumerate(calendars):
                 logger.info(f'({num + 1}/{len(calendars)}) #{student.id} - {student.fio}')
                 to_google = await calendar_executor(student.id)
                 if to_google is None:

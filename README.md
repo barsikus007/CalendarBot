@@ -7,6 +7,7 @@ To deploy, you need just specify your configs and run it in docker via:
 ```bash
 docker compose up -d --build
 ```
+Then check logs for link to auth your credentials
 ## Frontend
 https://github.com/barsikus007/xalendar
 ## TODO

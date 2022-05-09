@@ -10,7 +10,7 @@ from src.models import Calendar, Event, Student
 
 
 async def dump_db():
-    folder = Path('csv')
+    folder = Path('../../csv')
     folder.mkdir(parents=True, exist_ok=True)
     with tarfile.open(folder / 'dump.tar.xz', 'w:xz') as tar:
         for table in [Calendar, Event, Student]:
