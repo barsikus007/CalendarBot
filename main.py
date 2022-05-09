@@ -8,7 +8,7 @@ from aiogram.utils.exceptions import MessageCantBeDeleted
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from googleapiclient import errors
 
-from utils import get_logger, get_service
+from src.utils import get_logger, get_service
 from src.settings import settings
 from src.db.dump_db import dump_db
 from src.crud.student import get_student_by_fio, get_student_by_telegram_id, update_student_tg_id, set_student_calendar

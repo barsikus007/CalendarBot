@@ -7,7 +7,7 @@ import httpx
 from pydantic import ValidationError
 from googleapiclient import errors
 
-from utils import get_logger, get_service
+from src.utils import get_logger, get_service
 from src.schema import Event as ResponseEvent
 from src.models import Event, Calendar, Student
 from src.settings import settings

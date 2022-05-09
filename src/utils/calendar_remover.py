@@ -3,7 +3,7 @@ import asyncio
 from googleapiclient import errors
 
 from src.crud.student import get_students_with_calendars
-from utils import get_logger, get_service
+from src.utils import get_logger, get_service
 from worker import delete_google_event
 
 
