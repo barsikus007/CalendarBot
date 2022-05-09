@@ -4,15 +4,16 @@ from hashlib import md5
 from datetime import datetime
 
 import httpx
+from pydantic import ValidationError
 from googleapiclient import errors
 
-from create_db import check_if_exists, add_data_from_old_db, put_students_from_site, create_or_connect_and_reset
-from db import get_calendars, get_event, get_calendar
-from db import create_event, create_calendar
-from db import update_event, update_calendar
-from db import delete_calendar
 from utils import get_logger, get_service
+from src.schema import Event as ResponseEvent
+from src.models import Event, Calendar
 from src.settings import settings
+from src.crud.student import get_students_with_calendars
+from src.crud.event import create_event, update_event, get_event
+from src.crud.calendar import create_calendar, update_calendar, delete_calendar, get_calendar
 
 
 logger = get_logger('worker')
@@ -29,15 +30,18 @@ def error_log(e: Exception, text, trace=False):
         logger.error(f'[{e}/{type(e)}]: {text}')
 
 
-def get_calendar_from_site(student_id):
+def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
     try:  # showAll: true; year: 2021-2022
         response1 = httpx.get(f'{settings.GET_CALENDAR_URL}{student_id}&year=2020-2021', timeout=10)
         response2 = httpx.get(f'{settings.GET_CALENDAR_URL}{student_id}', timeout=10)
         raw_events_list = [*response1.json()['data']['raspList'], *response2.json()['data']['raspList']]
-        logger.info(f'Total - {len(raw_events_list)}')
+        raw_events_list: list[ResponseEvent] = [ResponseEvent(**event) for event in raw_events_list]
+        logger.info(f'Total - {len(raw_events_list):4d}')
         if len(raw_events_list) == 0:
             raise ValueError('Site returned no data')
         return raw_events_list
+    except ValidationError as e:
+        error_log(e, '[ValidationError]')
     except ValueError as e:
         error_log(e, '[503 Service Temporarily Unavailable - ValueError]')
     except TypeError as e:
@@ -48,39 +52,50 @@ def get_calendar_from_site(student_id):
         error_log(e, '[UNKNOWN ERROR IN REQUESTER]', True)
 
 
-def cut_event(raw_event):
-    info_dict = raw_event['info']
-    if not raw_event['end']:
+def cut_event(raw_event: ResponseEvent):
+    info_dict = raw_event.info
+    if not raw_event.end:
         # All day event (probably - free day), skipping...
         return
-    teachers = ', '.join(sorted([teacher['name'] for teacher in info_dict['teachers']]))
-    groups = ', '.join(sorted([group['name'] for group in info_dict['groups']]))
-    event = {
-        'name': raw_event['name'],
-        'color': raw_event['color'] or '#f0f0f0',
-        'start': raw_event['start'],
-        'end': raw_event['end'],
-        'rasp_item_ids': raw_event['raspItemsIDs'],
-        'aud': info_dict['aud'] or '',
-        'link': info_dict['link'],
-        'teacher': teachers,
-        'module_name': info_dict['moduleName'],
-        'theme': info_dict['theme'],
-        'group_name': groups,
-        'description': f"Преподаватели: {teachers}\n"
-                       f"Модуль: {info_dict['moduleName']}\n"
-                       f"Тема: {info_dict['theme']}\n"
-                       f"Группы: {groups}",
-    }
-    if event['link']:
-        event['description'] = f"{event['link']}\n{event['description']}"
+    event_ids = raw_event.raspItemsIDs
+    if len(event_ids) > 1:
+        event_id = sum(event_ids)  # May have troubles
+    else:
+        event_id = event_ids[0]
+    teachers = ', '.join(sorted([teacher.name for teacher in info_dict.teachers]))
+    groups = ', '.join(sorted([group.name for group in info_dict.groups]))
+    event = Event(
+        id=event_id,
+        name=raw_event.name,
+        color=raw_event.color or '#f0f0f0',
+        start=raw_event.start,
+        end=raw_event.end,
+        aud=info_dict.aud or '',
+        link=info_dict.link,
+        teachers=teachers,
+        module_name=info_dict.moduleName,  # TODO ?
+        theme=info_dict.theme,  # TODO ?
+        group_names=groups,
+        description=f'Преподаватели: {teachers}\n'
+                    f'Модуль: {info_dict.moduleName}\n'
+                    f'Тема: {info_dict.theme}\n'
+                    f'Группы: {groups}',
+    )
+    if event.link:
+        event.description = f'{event.link}\n{event.description}'
     return event
 
 
-def hash_event(event):
+def hash_event(event: Event):
+    start = datetime.strftime(event.start.astimezone(), '%Y-%m-%dT%H:%M:%S%z')
+    end = datetime.strftime(event.end.astimezone(), '%Y-%m-%dT%H:%M:%S%z')
+    if start[-3:-2] != ':':
+        start = f'{start[:-2]}:{start[-2:]}'
+    if end[-3:-2] != ':':
+        end = f'{end[:-2]}:{end[-2:]}'
     return md5(str(
-        event['start'] + event['end'] + event['name'] +
-        event['description'] + event['aud'] + event['color']
+        start + end + event.name +
+        event.description + event.aud + event.color
             ).encode('UTF-8')).hexdigest()
 
 
@@ -124,75 +139,72 @@ async def calendar_executor(student_id):
             if not event:
                 # Skip all day event
                 continue
-            event['hash'] = hash_event(event)
-            event['start'] = datetime.strptime(event['start'], '%Y-%m-%dT%H:%M:%S%z')
-            event['end'] = datetime.strptime(event['end'], '%Y-%m-%dT%H:%M:%S%z')
-            rasp_item_ids = event.pop('rasp_item_ids')
-            if len(rasp_item_ids) > 1:
-                event_id = sum(rasp_item_ids)  # May have troubles
-            else:
-                event_id = rasp_item_ids[0]
-            event_from_db = await get_event(event_id)
-            event['rasp_item_id'] = event_id
+            event.hash = hash_event(event)
+            event_from_db = await get_event(event.id)
             if event_from_db is None:
                 await create_event(event)
-            elif event_from_db.hash != event['hash']:
+            elif event_from_db.hash != event.hash:  # elif hash_event(event_from_db) != hash_event(event):
                 await update_event(event)
-            if event_id not in old_calendar_dict:
+            if event.id not in old_calendar_dict:
                 events_to_create.append(event)
-            elif old_calendar_dict[event_id] != event['hash']:
+            elif old_calendar_dict[event.id] != event.hash:
                 events_to_update.append(event)
-                old_calendar_dict.pop(event_id)
+                old_calendar_dict.pop(event.id)
             else:
-                old_calendar_dict.pop(event_id)
+                old_calendar_dict.pop(event.id)
         events_to_delete = [_ for _ in old_calendar_dict]
         if [] == events_to_create == events_to_update == events_to_delete:
-            logger.info(f'Nothing to change')
+            logger.info('Nothing to change')
         else:
-            logger.info(f'To create - {len(events_to_create)}')
-            logger.info(f'To update - {len(events_to_update)}')
-            logger.info(f'To delete - {len(events_to_delete)}')
+            logger.info(f'To create - {len(events_to_create):4d}')
+            logger.info(f'To update - {len(events_to_update):4d}')
+            logger.info(f'To delete - {len(events_to_delete):4d}')
         return events_to_create, events_to_update, events_to_delete
     except Exception as e:
         error_log(e, '[UNKNOWN ERROR IN CALENDAR EXECUTOR]', True)
 
 
-async def google_executor(service, to_google, student_id, calendar_id):
+async def google_executor(
+            service,
+            to_google: tuple[list[Event], list[Event], list[Event]],
+            student_id: int,
+            calendar_id: str,
+    ):
     events_to_create, events_to_update, events_to_delete = to_google
     if len(events_to_delete) > 50:
         return logger.info('IT SEEMS THAT CALENDAR DROPPED - REJECTING CHANGES')
     for num, event in enumerate(events_to_create):
-        logger.info(f'{num+1}/{len(events_to_create)} - Create')
+        logger.info(f'{num+1:4d}/{len(events_to_create):4d} - Create')
         await send_google_event(service, calendar_id, event, True)
-        await create_calendar(student_id, event['rasp_item_id'], event['hash'])
+        await create_calendar(Calendar(student_id=student_id, event_id=event.id, hash=event.hash))
     for num, event in enumerate(events_to_update):
-        logger.info(f'{num+1}/{len(events_to_update)} - Update')
+        logger.info(f'{num+1:4d}/{len(events_to_update):4d} - Update')
         await send_google_event(service, calendar_id, event)
-        await update_calendar(student_id, event['rasp_item_id'], event['hash'])
+        await update_calendar(Calendar(student_id=student_id, event_id=event.id, hash=event.hash))
     for num, event_id in enumerate(events_to_delete):
-        logger.info(f'{num+1}/{len(events_to_delete)} - Delete')
+        logger.info(f'{num+1:4d}/{len(events_to_delete):4d} - Delete')
         await delete_google_event(service, calendar_id, event_id)
         await delete_calendar(student_id, event_id)
 
 
-async def send_google_event(service, calendar_id, event, create=False):
+async def send_google_event(service, calendar_id, event: Event, create=False):
     while True:
         # Requests speed is slow, so we don't need cooldown here
         # Remake this section when this will be slow point
         await asyncio.sleep(EVENTS_COOLDOWN)
         body = {
             'status': 'confirmed',
-            'colorId': color_picker(event['color'][1:]),
-            'summary': event["name"],
-            'location': event['aud'],
-            'description': f'{event["description"]}',
-            'id': event['rasp_item_id'],
+            'colorId': color_picker(event.color[1:]),
+            'summary': event.name,
+            'location': event.aud,
+            'description': f'{event.description}',
+            'id': event.id,
             'start': {
-                'dateTime': event['start'].isoformat(),
+                'dateTime': event.start.isoformat(),
                 'timeZone': 'Europe/Moscow',
             },
             'end': {
-                'dateTime': event['end'].isoformat(),
+                'dateTime': event.end.isoformat(),
                 'timeZone': 'Europe/Moscow',
             },
         }
@@ -252,26 +264,18 @@ async def delete_google_event(service, calendar_id, event_id):
             await asyncio.sleep(ERROR_COOLDOWN)
 
 
-async def main():
-    exists = await check_if_exists()
-    logger.info('Database' + (' ' if exists else ' not ') + 'exists!')
-    if not exists:
-        await create_or_connect_and_reset()
-        await put_students_from_site()
-        await add_data_from_old_db()
-        logger.info('Database created!')
-    exit()
+async def parser(logger):
     while True:
         try:
             service = get_service(logger)
-            calendars = await get_calendars()
+            calendars = await get_students_with_calendars()
             for num, student in enumerate(calendars):
-                logger.info(f'({num + 1}/{len(calendars)}) #{student.student_id} - {student.fio}')
-                to_google = await calendar_executor(student.student_id)
+                logger.info(f'({num + 1}/{len(calendars)}) #{student.id} - {student.fio}')
+                to_google = await calendar_executor(student.id)
                 if to_google is None:
-                    logger.info(f'Skipping google executor due to error above...')
+                    logger.info('Skipping google executor due to error above...')
                 else:
-                    await google_executor(service, to_google, student.student_id, student.calendar_id)
+                    await google_executor(service, to_google, student.id, student.calendar_id)
                 await asyncio.sleep(STUDENTS_COOLDOWN)
             logger.info('Last user, sleeping...')
             await asyncio.sleep(LOOPS_COOLDOWN)
@@ -285,4 +289,4 @@ if __name__ == '__main__':
 
     if platform.system() == 'Windows':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(main())
+    asyncio.run(parser(logger))

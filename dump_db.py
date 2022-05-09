@@ -5,15 +5,15 @@ from pathlib import Path
 
 from sqlalchemy.future import select
 
-from models import Calendar, Events, Students
-from utils import async_session
+from src.db import async_session
+from src.models import Calendar, Event, Student
 
 
 async def dump_db():
     folder = Path('csv')
     folder.mkdir(parents=True, exist_ok=True)
     with tarfile.open(folder / 'dump.tar.xz', 'w:xz') as tar:
-        for table in [Calendar, Events, Students]:
+        for table in [Calendar, Event, Student]:
             with open(folder / f'{table.__tablename__}.csv', 'w', encoding='UTF-8', newline='') as file:
                 out_csv = csv.writer(file)
                 async with async_session() as session:

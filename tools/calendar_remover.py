@@ -2,7 +2,7 @@ import asyncio
 
 from googleapiclient import errors
 
-from db import get_calendars
+from crud import get_students_with_calendars
 from utils import get_logger, get_service
 from worker import delete_google_event
 
@@ -38,9 +38,9 @@ async def main():
     try:
         exit('Lock from misclick')
         service = get_service(logger)
-        calendars = await get_calendars()
+        calendars = await get_students_with_calendars()
         for num, student in enumerate(calendars):
-            logger.info(f'({num + 1}/{len(calendars)}) #{student.student_id} - {student.fio}')
+            logger.info(f'({num + 1}/{len(calendars)}) #{student.id} - {student.fio}')
             await google_executor(service, student.calendar_id)
             await asyncio.sleep(5)
         logger.info('Last user, exiting...')

@@ -2,24 +2,25 @@ from datetime import datetime
 
 from pydantic import EmailStr
 from sqlmodel import SQLModel, Field
+from sqlalchemy import Column, TIMESTAMP
 
 
 __all__ = ['Student', 'Event', 'Calendar']
 
 
 class Student(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True, nullable=False)
+    id: int = Field(primary_key=True)
     fio: str
     telegram_id: int | None
     calendar_id: EmailStr | None
 
 
 class Event(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True, nullable=False)
-    name = str
+    id: int = Field(primary_key=True)
+    name: str
     color: str
-    start = datetime
-    end = datetime
+    start: datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False))
+    end: datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False))
     aud: str | None
     link: str | None
     teachers: str | None  # +s

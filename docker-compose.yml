@@ -1,11 +1,9 @@
 services:
   calendar:
     build: .
-    command: sh -c 'alembic upgrade head && python worker.py'
+    command: sh -c 'alembic upgrade head && python main.py'
     env_file:
       - .env
-#    environment:
-#      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
     volumes:
       - ./logs:/app/logs:cached
       - ./alembic:/app/alembic

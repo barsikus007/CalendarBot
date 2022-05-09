@@ -1,9 +1,5 @@
-import asyncio
 from datetime import datetime
-from pydantic import BaseModel, ValidationError, conlist
-
-from db import get_calendars
-from worker import get_calendar_from_site
+from pydantic import BaseModel, conlist
 
 
 class Group(BaseModel):
@@ -42,7 +38,7 @@ class EventInfo(BaseModel):
     # https://example.com/WebApp/#/PersonalKab/{userID}
     userID: None
     raspItemID: int
-    # ID based on university timetable (1 - 5) (6 - custom)
+    # ID based on university timetable (1 - 7) (10 - custom)
     timeZanID: int
     teachersNames: str
     groupName: str
@@ -85,24 +81,3 @@ class Response(BaseModel):
     msg: str
     # state of success (-1, 1)
     state: int
-
-
-async def validate():
-    calendars = await get_calendars()
-    for student in calendars:
-        print(student.student_id)
-        rasp: list[dict] = get_calendar_from_site(student.student_id)
-        for e in rasp:
-            try:
-                Event(**e)
-            except ValidationError as ee:
-                print(ee)
-                print(e)
-
-
-if __name__ == '__main__':
-    import platform
-
-    if platform.system() == 'Windows':
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(validate())

@@ -2,19 +2,10 @@ import os
 import sys
 
 from loguru import logger
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-
-from src.settings import settings
-
-
-engine = create_async_engine(settings.DATABASE_URL, future=True, echo=False)
-async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-Base = declarative_base()
 
 
 def get_logger(name):

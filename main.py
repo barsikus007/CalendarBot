@@ -1,17 +1,18 @@
 import base64
+from datetime import datetime
 
 from aiogram import executor, Bot, Dispatcher
 from aiogram.types import Update, Message, BotCommand, ContentTypes, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.dispatcher.middlewares import BaseMiddleware
 from aiogram.utils.exceptions import MessageCantBeDeleted
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from googleapiclient import errors
 
-from db import get_student_by_fio, get_student_by_telegram_id
-from db import update_student_tg_id
-from db import set_student_calendar
 from dump_db import dump_db
 from utils import get_logger, get_service
 from src.settings import settings
+from src.crud.student import get_student_by_fio, get_student_by_telegram_id, update_student_tg_id, set_student_calendar
+from worker import parser
 
 
 logger = get_logger('bot')
@@ -164,12 +165,12 @@ async def get(message: Message, fio=None):
     await message.answer('Generating your link...')
     calendar_id = user_data.calendar_id
     if calendar_id is None:
-        calendar_id = await create_calendar(user_data.student_id, message.from_user.id)
+        calendar_id = await create_calendar(user_data.id, message.from_user.id)
         if not calendar_id:
             await message.answer(
                 f'Server error - try again later or contact @{settings.ADMIN_USERNAME} for report problem')
             return
-    calendar_id = await check_calendar_link(calendar_id, message.from_user.id, user_data.student_id)
+    calendar_id = await check_calendar_link(calendar_id, message.from_user.id, user_data.id)
     base64_link = base64.b64encode(calendar_id.encode('ascii')).decode('ascii').replace('=', '')
     calendar_url = f'https://calendar.google.com/calendar/u/0?cid={base64_link}'
     await message.answer(
@@ -292,5 +293,9 @@ async def all_other_messages(message: Message):
 
 
 if __name__ == '__main__':
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(parser, 'date', run_date=datetime.now(), args=[get_logger('worker')])
     dp.middleware.setup(LoggingMiddleware())
+    scheduler.start()
     executor.start_polling(dp)
+    scheduler.shutdown()
