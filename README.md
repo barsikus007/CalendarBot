@@ -10,6 +10,3 @@ docker compose up -d --build
 Then check logs for link to auth your credentials
 ## Frontend
 https://github.com/barsikus007/xalendar
-## TODO
-- [ ] logo generator
-- [ ] logs

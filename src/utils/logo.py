@@ -47,7 +47,8 @@ def make_image(
         side=100,
         duration=100,
         resolution=(1920, 1080),
-        background=256 ** 3 - 1):
+        background=256 ** 3 - 1
+):
     side = side * multiplier
     screen_x, screen_y = resolution[0] * multiplier, resolution[1] * multiplier
     center = (screen_x // 2 + side // 2, screen_y * 995 // 1000)

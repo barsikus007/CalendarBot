@@ -1,5 +1,6 @@
 import base64
-from datetime import datetime
+from pathlib import Path
+from datetime import datetime, timedelta
 
 from aiogram import executor, Bot, Dispatcher
 from aiogram.types import Update, Message, BotCommand, ContentTypes, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -9,6 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from googleapiclient import errors
 
 from src.utils import get_logger, get_service
+from src.utils.logo import make_image
 from src.settings import settings
 from src.db.dump_db import dump_db
 from src.crud.student import get_student_by_fio, get_student_by_telegram_id, update_student_tg_id, set_student_calendar
@@ -28,6 +30,8 @@ commands_list = [
     BotCommand(command='/setup', description='Choose your name for calendar'),
     BotCommand(command='/color', description='Setup colors for calendar'),
     BotCommand(command='/get', description='Generate personal calendar url and link'),
+    BotCommand(command='/electives', description='Get electives calendar url and link'),
+    BotCommand(command='/logo', description='Generate logo'),
 ]
 
 
@@ -98,11 +102,8 @@ async def errors(event: Update = None, exception: BaseException = None):
 @dp.message_handler(commands='dump')
 async def dump(message: Message):
     if message.from_user.id == settings.ADMIN_ID:
-        dump = await dump_db()
-        await message.answer_document(document=open(dump, 'rb'))
-        # await message.answer_document(document=open('csv/calendar.csv', 'rb'))
-        # await message.answer_document(document=open('csv/events.csv', 'rb'))
-        # await message.answer_document(document=open('csv/students.csv', 'rb'))
+        archive = await dump_db()
+        await message.answer_document(document=open(archive, 'rb'))
 
 
 @dp.message_handler(commands='color')
@@ -202,9 +203,81 @@ async def electives(message: Message):
             InlineKeyboardButton('How to add?', callback_data='how_to')))
 
 
+@dp.message_handler(commands='logs')
+async def log_analyze(message: Message):
+    if message.from_user.id != settings.ADMIN_ID:
+        return
+    log_folder = Path('logs')
+    yesterday_bot_log = log_folder / 'bot' / ((datetime.now() - timedelta(1)).strftime('%y-%m-%d') + '-crash.log')
+    yesterday_worker_log = log_folder / 'worker' / ((datetime.now() - timedelta(1)).strftime('%y-%m-%d') + '-crash.log')
+    today_bot_log = log_folder / 'bot' / (datetime.now().strftime('%y-%m-%d') + '-crash.log')
+    today_worker_log = log_folder / 'worker' / (datetime.now().strftime('%y-%m-%d') + '-crash.log')
+    count_yesterday_bot_log = None
+    count_yesterday_worker_log = None
+    count_today_bot_log = None
+    count_today_worker_log = None
+    if yesterday_bot_log.exists():
+        with open(yesterday_bot_log) as f:
+            count_yesterday_bot_log = len([_ for _ in f.readlines() if _.find('| ERROR   |') != -1])
+    if yesterday_worker_log.exists():
+        with open(yesterday_worker_log) as f:
+            count_yesterday_worker_log = len([_ for _ in f.readlines() if _.find('| ERROR   |') != -1])
+    if today_bot_log.exists():
+        with open(today_bot_log) as f:
+            count_today_bot_log = len([_ for _ in f.readlines() if _.find('| ERROR   |') != -1])
+    if today_worker_log.exists():
+        with open(today_worker_log) as f:
+            count_today_worker_log = len([_ for _ in f.readlines() if _.find('| ERROR   |') != -1])
+    await message.answer(
+        f'Logs\n'
+        f'{count_yesterday_bot_log=}\n'
+        f'{count_yesterday_worker_log=}\n'
+        f'{count_today_bot_log=}\n'
+        f'{count_today_worker_log=}'
+    )
+
+
 @dp.message_handler(commands='logo')
 async def logo_gen(message: Message):
-    await message.answer('soon')
+    args = message.text.split()[1:]
+    if len(args) != 9:
+        return await message.answer(
+            f'/logo n r g b multiplier side x y background\n'
+            f'/logo 20 255 255 255 1 100 3840 2160 16777215\n'
+            f'n = number of figures\n'
+            f'r, g, b = number of figures\n'
+            f'multiplier = number of figures\n'
+            f'side = number of figures\n'
+            f'x, y = resolution of image\n'
+            f'background = background color (r*g*b) (use 16777215 for white)\n'
+        )
+    try:
+        args = [*map(int, args)]
+    except Exception as e:
+        return await message.answer(f'Incorrect format {e}')
+    n, r, g, b, multiplier, side, x, y, background = args
+    if not (
+            21 > n > 3 or
+            256 > r >= 0 or 256 > g >= 0 or 256 > b >= 0 or
+            10 > multiplier > 0 or 1000 > side > 0 or
+            256 > x >= 0 or 256 > y >= 0 or 16777216 > background >= 0
+    ):
+        return await message.answer('Args is invalid')
+    filename = f'{hash(message)}.png'
+    try:
+        make_image(
+            n=n,
+            color=(r, g, b),
+            show_image=False,
+            save_image=filename,
+            multiplier=multiplier,
+            side=side,
+            resolution=(x, y),
+            background=background
+        )
+    except Exception as e:
+        return await message.answer(f'Incorrect format {e}')
+    await message.answer_document(open(filename, 'rb'))
 
 
 @dp.message_handler(commands='help')
