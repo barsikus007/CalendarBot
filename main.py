@@ -244,12 +244,12 @@ async def logo_gen(message: Message):
     if len(args) != 8:
         return await message.answer(
             f'`/logo n  r   g   b   side x    y    background`\n'
-            f'`/logo 20 255 255 255 100  3840 2160 16777215`\n'
-            f'n = number of figures\n'
-            f'r, g, b = main color\n'
-            f'side = side of polygons\n'
+            f'`/logo 20 255 255 255 100  1920 1080 16777215`\n'
+            f'n = number of polygons\n'
+            f'r, g, b = accent color (polygons will fade from this to black)\n'
+            f'side = polygon\'s side size\n'
             f'x, y = resolution of result image\n'
-            f'background = background color (r*g*b) (use 16777215 for white)\n',
+            f'background = background color (r\*g\*b) (use 256\*256\*256=16777215 for white, 0\*0\*0=0 for black)\n',
             parse_mode='Markdown'
         )
     try:
@@ -258,13 +258,13 @@ async def logo_gen(message: Message):
         return await message.answer(f'Incorrect format {e}')
     n, r, g, b, side, x, y, background = args
     if not (
-            (50 > n > 3) and
+            (50 >= n >= 3) and
             (256 > r >= 0) and (256 > g >= 0) and (256 > b >= 0) and (1000 >= side > 0) and
             (3840 >= x >= 640) and (2160 >= y >= 480) and (16777216 > background >= 0)
     ):
         return await message.answer(
             'Args is invalid:\n'
-            f'(50 > {n=} > 3) (256 > {r=} >= 0) (256 > {g=} >= 0) (256 > {b=} >= 0) (1000 >= {side=} > 0) and\n'
+            f'(50 >= {n=} >= 3) (256 > {r=} >= 0) (256 > {g=} >= 0) (256 > {b=} >= 0) (1000 >= {side=} > 0) and\n'
             f'(3840 >= {x=} >= 640) and (2160 >= {y=} >= 480) and (16777216 > {background=} >= 0)'
         )
     filename = f'{hash(message)}.png'
