@@ -16,7 +16,7 @@ from src.crud.event import create_event, update_event, get_event
 from src.crud.calendar import create_calendar, update_calendar, delete_calendar, get_calendar
 
 
-logger = get_logger('worker')
+worker_logger = get_logger('worker')
 EVENTS_COOLDOWN = 0.1
 STUDENTS_COOLDOWN = 5
 LOOPS_COOLDOWN = 10
@@ -25,9 +25,9 @@ ERROR_COOLDOWN = 10
 
 def error_log(e: Exception, text, trace=False):
     if trace:
-        logger.exception(f'[{e}/{type(e)}]: {text}')
+        worker_logger.exception(f'[{e}/{type(e)}]: {text}')
     else:
-        logger.error(f'[{e}/{type(e)}]: {text}')
+        worker_logger.error(f'[{e}/{type(e)}]: {text}')
 
 
 def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
@@ -44,7 +44,7 @@ def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
         events_list = [ResponseEvent(**event) for event in raw_events_list]
         if student_id == 200000:
             events_list = [event for event in events_list if event.info.categoryID in [2, 3]]
-        logger.info(f'Total - {len(events_list):4d}')
+        worker_logger.info(f'Total - {len(events_list):4d}')
         if not events_list:
             raise ValueError('Site returned no data')
         return events_list
@@ -156,11 +156,11 @@ async def calendar_executor(student_id):
                 old_calendar_dict.pop(event.id)
         events_to_delete = list(old_calendar_dict)
         if [] == events_to_create == events_to_update == events_to_delete:
-            logger.info('Nothing to change')
+            worker_logger.info('Nothing to change')
         else:
-            logger.info(f'To create - {len(events_to_create):4d}')
-            logger.info(f'To update - {len(events_to_update):4d}')
-            logger.info(f'To delete - {len(events_to_delete):4d}')
+            worker_logger.info(f'To create - {len(events_to_create):4d}')
+            worker_logger.info(f'To update - {len(events_to_update):4d}')
+            worker_logger.info(f'To delete - {len(events_to_delete):4d}')
         return events_to_create, events_to_update, events_to_delete
     except Exception as e:
         error_log(e, '[UNKNOWN ERROR IN CALENDAR EXECUTOR]', True)
@@ -174,17 +174,17 @@ async def google_executor(
 ):
     events_to_create, events_to_update, events_to_delete = to_google
     if len(events_to_delete) > 50:
-        return logger.info('IT SEEMS THAT CALENDAR DROPPED - REJECTING CHANGES')
+        return worker_logger.info('IT SEEMS THAT CALENDAR DROPPED - REJECTING CHANGES')
     for num, event in enumerate(events_to_create):
-        logger.info(f'{num + 1:4d}/{len(events_to_create):4d} - Create')
+        worker_logger.info(f'{num + 1:4d}/{len(events_to_create):4d} - Create')
         await send_google_event(service, calendar_id, event, True)
         await create_calendar(Calendar(student_id=student_id, event_id=event.id, hash=event.hash))
     for num, event in enumerate(events_to_update):
-        logger.info(f'{num + 1:4d}/{len(events_to_update):4d} - Update')
+        worker_logger.info(f'{num + 1:4d}/{len(events_to_update):4d} - Update')
         await send_google_event(service, calendar_id, event)
         await update_calendar(Calendar(student_id=student_id, event_id=event.id, hash=event.hash))
     for num, event_id in enumerate(events_to_delete):
-        logger.info(f'{num + 1:4d}/{len(events_to_delete):4d} - Delete')
+        worker_logger.info(f'{num + 1:4d}/{len(events_to_delete):4d} - Delete')
         await delete_google_event(service, calendar_id, event_id)
         await delete_calendar(student_id, event_id)
 
@@ -218,20 +218,20 @@ async def send_google_event(service, calendar_id, event: Event, create=False):
             return request.execute()
         except errors.HttpError as e:
             if e.resp.status == 403:
-                logger.info('403 ERROR, SLEEPING...')
+                worker_logger.info('403 ERROR, SLEEPING...')
                 await asyncio.sleep(ERROR_COOLDOWN)
             elif not create and e.resp.status == 404:
-                logger.info('404 ERROR, CREATING...')
+                worker_logger.info('404 ERROR, CREATING...')
                 return service.events().insert(calendarId=calendar_id, body=body).execute()
             elif create and e.resp.status == 409:
-                logger.info('409 ERROR, PATCHING...')
+                worker_logger.info('409 ERROR, PATCHING...')
                 return service.events().patch(calendarId=calendar_id, eventId=body['id'], body=body).execute()
             elif e.resp.status in [500, 503]:
-                logger.info(f'{e.resp.status} ERROR SLEEPING...')
+                worker_logger.info(f'{e.resp.status} ERROR SLEEPING...')
                 error_log(e, f'[{e.resp.status} / GOOGLE IS DOWN]')
                 await asyncio.sleep(ERROR_COOLDOWN)
             else:
-                logger.info('XXX ERROR SLEEPING...')
+                worker_logger.info('XXX ERROR SLEEPING...')
                 error_log(e, '[XXX / GOOGLE IS DOWN]')
                 await asyncio.sleep(ERROR_COOLDOWN)
         except Exception as e:
@@ -247,12 +247,12 @@ async def delete_google_event(service, calendar_id, event_id):
             return request.execute()
         except errors.HttpError as e:
             if e.resp.status == 403:
-                logger.info('403 ERROR SLEEPING...')
+                worker_logger.info('403 ERROR SLEEPING...')
             elif e.resp.status in [500, 503]:
-                logger.info(f'{e.resp.status} ERROR SLEEPING...')
+                worker_logger.info(f'{e.resp.status} ERROR SLEEPING...')
                 error_log(e, f'[{e.resp.status} / GOOGLE IS DOWN]')
             else:
-                logger.info('XXX ERROR SLEEPING...')
+                worker_logger.info('XXX ERROR SLEEPING...')
                 error_log(e, '[XXX / GOOGLE IS DOWN]')
             await asyncio.sleep(ERROR_COOLDOWN)
         except Exception as e:
@@ -263,17 +263,17 @@ async def delete_google_event(service, calendar_id, event_id):
 async def parser():
     while True:
         try:
-            service = get_service(logger)
+            service = get_service(worker_logger)
             calendars = await get_students_with_calendars()
             for num, student in enumerate(calendars):
-                logger.info(f'({num + 1}/{len(calendars)}) #{student.id} - {student.fio}')
+                worker_logger.info(f'({num + 1}/{len(calendars)}) #{student.id} - {student.fio}')
                 to_google = await calendar_executor(student.id)
                 if to_google is None:
-                    logger.info('Skipping google executor due to error above...')
+                    worker_logger.info('Skipping google executor due to error above...')
                 else:
                     await google_executor(service, to_google, student.id, student.calendar_id)
                 await asyncio.sleep(STUDENTS_COOLDOWN)
-            logger.info('Last user, sleeping...')
+            worker_logger.info('Last user, sleeping...')
             await asyncio.sleep(LOOPS_COOLDOWN)
         except Exception as e:
             error_log(e, '[UNKNOWN ERROR IN LOOP]', True)
