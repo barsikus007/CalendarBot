@@ -9,7 +9,7 @@ from googleapiclient import errors
 
 from src.utils import get_logger, get_service
 from src.schema import Event as ResponseEvent
-from src.models import Event, Calendar, Student
+from src.models import Event, Calendar
 from src.settings import settings
 from src.crud.student import get_students_with_calendars
 from src.crud.event import create_event, update_event, get_event
@@ -31,7 +31,7 @@ def error_log(e: Exception, text, trace=False):
 
 
 def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
-    try:  # year: 2021-2022
+    try:  # TODO year: 2021-2022
         responses = [
             httpx.get(f'{settings.GET_CALENDAR_URL}course=0&course=1&course=2&showAll=true', timeout=10)
         ] if student_id == 200000 else [
@@ -260,7 +260,7 @@ async def delete_google_event(service, calendar_id, event_id):
             await asyncio.sleep(ERROR_COOLDOWN)
 
 
-async def parser(logger):
+async def parser():
     while True:
         try:
             service = get_service(logger)
@@ -285,4 +285,4 @@ if __name__ == '__main__':
 
     if platform.system() == 'Windows':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(parser(logger))
+    asyncio.run(parser())

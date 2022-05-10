@@ -9,7 +9,7 @@ from google.oauth2.credentials import Credentials
 
 
 def get_logger(name):
-    logger.remove()
+    # logger.remove()
     fmt = '<green>{time:YY/MM/DD HH:mm:ss}</> | <lvl>{level:7s}</> | <lvl>{message}</>'
     logger.add(
         'logs/' + name + '/{time:YY-MM-DD}.log', level='INFO', format=fmt,
