@@ -243,27 +243,30 @@ async def logo_gen(message: Message):
     args = message.text.split()[1:]
     if len(args) != 9:
         return await message.answer(
-            f'/logo n r g b multiplier side x y background\n'
-            f'/logo 20 255 255 255 1 100 3840 2160 16777215\n'
+            f'`/logo n  r   g   b   side x    y    background`\n'
+            f'`/logo 20 255 255 255 100  3840 2160 16777215`\n'
             f'n = number of figures\n'
-            f'r, g, b = number of figures\n'
-            f'multiplier = number of figures\n'
-            f'side = number of figures\n'
-            f'x, y = resolution of image\n'
-            f'background = background color (r*g*b) (use 16777215 for white)\n'
+            f'r, g, b = main color\n'
+            f'side = side of polygons\n'
+            f'x, y = resolution of result image\n'
+            f'background = background color (r*g*b) (use 16777215 for white)\n',
+            parse_mode='Markdown'
         )
     try:
         args = [*map(int, args)]
     except Exception as e:
         return await message.answer(f'Incorrect format {e}')
-    n, r, g, b, multiplier, side, x, y, background = args
+    n, r, g, b, side, x, y, background = args
     if not (
-            21 > n > 3 or
-            256 > r >= 0 or 256 > g >= 0 or 256 > b >= 0 or
-            10 > multiplier > 0 or 1000 > side > 0 or
-            256 > x >= 0 or 256 > y >= 0 or 16777216 > background >= 0
+            (50 > n > 3) and
+            (256 > r >= 0) and (256 > g >= 0) and (256 > b >= 0) and (1000 >= side > 0) and
+            (3840 >= x >= 640) and (2160 >= y >= 480) and (16777216 > background >= 0)
     ):
-        return await message.answer('Args is invalid')
+        return await message.answer(
+            'Args is invalid:\n'
+            f'(50 > {n=} > 3) (256 > {r=} >= 0) (256 > {g=} >= 0) (256 > {b=} >= 0) (1000 >= {side=} > 0) and\n'
+            f'(3840 >= {x=} >= 640) and (2160 >= {y=} >= 480) and (16777216 > {background=} >= 0)'
+        )
     filename = f'{hash(message)}.png'
     try:
         make_image(
@@ -271,7 +274,6 @@ async def logo_gen(message: Message):
             color=(r, g, b),
             show_image=False,
             save_image=filename,
-            multiplier=multiplier,
             side=side,
             resolution=(x, y),
             background=background
