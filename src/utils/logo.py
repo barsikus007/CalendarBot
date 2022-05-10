@@ -39,6 +39,7 @@ def draw_line(draw, color, center, a, n):
 def make_image(
         n=20,
         color=None,
+        direction=1,
         show_image=True,
         save_image=None,
         make_gif=None,
@@ -77,6 +78,8 @@ def make_image(
                 draw_line(draw, color_1, center, side, i)
             elif len(color) == 3:
                 color_x, color_y, color_z = color
+                end_rgb = (255, 255, 255) if direction == 1 else (0, 0, 0)
+
                 step_x, step_y, step_z = color_x//n, color_y//n, color_z//n
                 color_1 = (abs(color_x - i * step_x), abs(color_y - i * step_y), abs(color_z - i * step_z))
                 # color_1 = (color_x-(n-i)*step, color_y-(n-i)*step, color_z-(n-i)*step)
@@ -141,7 +144,10 @@ if __name__ == '__main__':
     # make_image(n=20, color="random", show_image=False, save_image=None, make_gif="yoy.gif", frames=10)
     # make_image(n=20, color="gay", show_image=False, save_image=None, make_gif="yoy.gif", frames=6, duration=16, side=170)
     # make_image(n=9, color="gay", side=300)
-    # make_image(n=20, side=500, resolution=[1080, 2160], color=(255, 127, 0), background=0, save_image="valya.png")
-    make_image(n=100, side=100*8*3, resolution=(1920*8*3, 1080*8*3), save_image="48KK.png")
+    make_image(n=20, side=500, resolution=[1080, 2160], color=(255, 127, 0), background=0, direction=-1)
+    # make_image(n=100, side=100*8*3, resolution=(1920*8*3, 1080*8*3), save_image="48KK.png")
     # gay random invert
+    # todo fix logs
+    # todo refactor colors
+    # todo auth ready
     # make_image()

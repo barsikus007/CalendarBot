@@ -1,4 +1,5 @@
 import base64
+import os
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -278,6 +279,7 @@ async def logo_gen(message: Message):
     except Exception as e:
         return await message.answer(f'Incorrect format {e}')
     await message.answer_document(open(filename, 'rb'))
+    os.remove(filename)
 
 
 @dp.message_handler(commands='help')
