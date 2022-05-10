@@ -394,6 +394,7 @@ async def all_other_messages(message: Message):
 if __name__ == '__main__':
     scheduler = AsyncIOScheduler()
     scheduler.add_job(parser, 'date', run_date=datetime.now(), args=[get_logger('worker')])
+    logger = get_logger('bot')
     dp.middleware.setup(LoggingMiddleware())
     scheduler.start()
     executor.start_polling(dp)
