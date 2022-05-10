@@ -241,7 +241,7 @@ async def log_analyze(message: Message):
 @dp.message_handler(commands='logo')
 async def logo_gen(message: Message):
     args = message.text.split()[1:]
-    if len(args) != 9:
+    if len(args) != 8:
         return await message.answer(
             f'`/logo n  r   g   b   side x    y    background`\n'
             f'`/logo 20 255 255 255 100  3840 2160 16777215`\n'
