@@ -33,13 +33,17 @@ async def get_student_by_telegram_id(telegram_id: int) -> Student:
         )).first()
 
 
-async def update_student_tg_id(fio: str, tg_id: int):
+async def update_student_tg_id(fio: str, telegram_id: int):
     async with async_session() as session:
-        (await get_student_by_fio(fio)).telegram_id = tg_id
+        student = await get_student_by_fio(fio)
+        student.telegram_id = telegram_id
+        session.add(student)
         await session.commit()
 
 
 async def set_student_calendar(student_id: int, calendar_id: str):
     async with async_session() as session:
-        (await get_student_by_student_id(student_id)).calendar_id = calendar_id
+        student = await get_student_by_student_id(student_id)
+        student.calendar_id = calendar_id
+        session.add(student)
         await session.commit()
