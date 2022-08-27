@@ -150,4 +150,5 @@ if __name__ == '__main__':
     # todo fix logs
     # todo refactor colors
     # todo auth ready
+    # todo unique tg_id column
     # make_image()

@@ -31,11 +31,12 @@ def error_log(e: Exception, text, trace=False):
 
 
 def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
-    try:  # TODO year: 2021-2022
+    try:  # TODO year: 2022-2023
         responses = [
-            httpx.get(f'{settings.GET_CALENDAR_URL}course=0&course=1&course=2&showAll=true', timeout=10)
+            httpx.get(f'{settings.GET_CALENDAR_URL}educationSpaceID=1&course=0&course=1&course=2&showAll=true', timeout=10)
         ] if student_id == 200000 else [
             httpx.get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2020-2021', timeout=10),
+            httpx.get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2021-2022', timeout=10),
             httpx.get(f'{settings.GET_CALENDAR_URL}studentID={student_id}', timeout=10)
         ]
         raw_events_list = []

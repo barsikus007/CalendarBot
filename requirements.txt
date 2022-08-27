@@ -1,6 +1,7 @@
 # aiogram[fast]
 aiogram
 ujson
+orjson
 uvloop; platform_system != "Windows"
 aiohttp[speedups]
 
