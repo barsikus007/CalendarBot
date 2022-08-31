@@ -57,6 +57,8 @@ def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
         error_log(e, '[503 Service Temporarily Unavailable - TypeError]')
     except httpx.TimeoutException as e:
         error_log(e, '[Timeout]')
+    except httpx.ConnectError as e:
+        error_log(e, '[Connection Error]')
     except Exception as e:
         error_log(e, '[UNKNOWN ERROR IN REQUESTER]', True)
 
