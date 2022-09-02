@@ -70,6 +70,8 @@ def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
         error_log(e, '[TimeoutError]')
     except ValidationError as e:
         error_log(e, '[ValidationError]')
+    except ValueError as e:
+        error_log(e, '[503 Service Temporarily Unavailable - ValueError], retrying...')
     except Exception as e:
         error_log(e, '[UNKNOWN ERROR IN REQUESTER]', True)
 
