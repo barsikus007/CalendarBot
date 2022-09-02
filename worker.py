@@ -32,18 +32,33 @@ def error_log(e: Exception, text, trace=False):
         logger.error(f'[{e}/{type(e)}]: {text}')
 
 
+def get(url: str, max_tries: int = 0) -> dict:
+    for _ in range(max_tries):
+        try:
+            return httpx.get(url, timeout=10).json()
+        except httpx.TimeoutException as e:
+            error_log(e, '[Timeout] retrying...')
+        except httpx.ConnectError as e:
+            error_log(e, '[Connection Error] retrying...')
+        except ValueError as e:
+            error_log(e, '[503 Service Temporarily Unavailable - ValueError], retrying...')
+        except TypeError as e:
+            error_log(e, '[503 Service Temporarily Unavailable - TypeError], retrying...')
+        raise TimeoutError(f'After {max_tries} tries, server still can\'t send response')
+
+
 def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
     try:  # TODO year: 2022-2023
         responses = [
-            httpx.get(f'{settings.GET_CALENDAR_URL}educationSpaceID=1&course=0&course=1&course=2&showAll=true', timeout=10)
+            get(f'{settings.GET_CALENDAR_URL}educationSpaceID=1&course=0&course=1&course=2&showAll=true', max_tries=3)
         ] if student_id == 200000 else [
-            httpx.get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2020-2021', timeout=10),
-            httpx.get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2021-2022', timeout=10),
-            httpx.get(f'{settings.GET_CALENDAR_URL}studentID={student_id}', timeout=10)
+            get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2020-2021', max_tries=3),
+            get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2021-2022', max_tries=3),
+            get(f'{settings.GET_CALENDAR_URL}studentID={student_id}', max_tries=3)
         ]
         raw_events_list = []
         for response in responses:
-            raw_events_list.extend(response.json()['data']['raspList'])
+            raw_events_list.extend(response['data']['raspList'])
         events_list = [ResponseEvent(**event) for event in raw_events_list]
         if student_id == 200000:
             events_list = [event for event in events_list if event.info.categoryID in [2, 3]]
@@ -51,16 +66,10 @@ def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
         if not events_list:
             raise ValueError('Site returned no data')
         return events_list
+    except TimeoutError as e:
+        error_log(e, '[TimeoutError]')
     except ValidationError as e:
         error_log(e, '[ValidationError]')
-    except ValueError as e:
-        error_log(e, '[503 Service Temporarily Unavailable - ValueError]')
-    except TypeError as e:
-        error_log(e, '[503 Service Temporarily Unavailable - TypeError]')
-    except httpx.TimeoutException as e:
-        error_log(e, '[Timeout]')
-    except httpx.ConnectError as e:
-        error_log(e, '[Connection Error]')
     except Exception as e:
         error_log(e, '[UNKNOWN ERROR IN REQUESTER]', True)
 
