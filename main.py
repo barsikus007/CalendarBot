@@ -392,9 +392,10 @@ async def all_other_messages(message: Message):
 
 
 if __name__ == '__main__':
-    parser_task = asyncio.create_task(parser())
+    loop = asyncio.new_event_loop()
+    parser_task = loop.create_task(parser())
 
     dp.middleware.setup(LoggingMiddleware())
-    executor.start_polling(dp)
+    executor.start_polling(dp, loop=loop)
 
     parser_task.cancel()
