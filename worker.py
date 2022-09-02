@@ -44,7 +44,7 @@ def get(url: str, max_tries: int = 0) -> dict:
             error_log(e, '[503 Service Temporarily Unavailable - ValueError], retrying...')
         except TypeError as e:
             error_log(e, '[503 Service Temporarily Unavailable - TypeError], retrying...')
-        raise TimeoutError(f'After {max_tries} tries, server still can\'t send response')
+        raise TimeoutError(f'After {max_tries} tries on {url}, server still can\'t send response')
 
 
 def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
