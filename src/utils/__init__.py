@@ -9,15 +9,15 @@ from google.oauth2.credentials import Credentials
 
 
 def get_logger(name):
-    # logger.remove()
+    logger.remove()
     fmt = '<green>{time:YY/MM/DD HH:mm:ss}</> | <lvl>{level:7s}</> | <lvl>{message}</>'
     logger.add(
-        'logs/' + name + '/{time:YY-MM-DD}.log', level='INFO', format=fmt,
+        f'logs/{name}/{{time:YY-MM-DD}}.log', level='INFO', format=fmt,
         filter=lambda _: _['level'].name in ['INFO', 'WARNING'],
         rotation='00:00', encoding='UTF-8'
     )
     logger.add(
-        'logs/' + name + '/{time:YY-MM-DD}-crash.log', level='ERROR', format=fmt,
+        f'logs/{name}/{{time:YY-MM-DD}}-crash.log', level='ERROR', format=fmt,
         rotation='00:00', encoding='UTF-8'
     )
     logger.add(sys.stderr, format=fmt, level='INFO')

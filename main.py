@@ -1,5 +1,6 @@
-import base64
 import os
+import base64
+import asyncio
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -7,7 +8,6 @@ from aiogram import executor, Bot, Dispatcher
 from aiogram.types import Update, Message, BotCommand, ContentTypes, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.dispatcher.middlewares import BaseMiddleware
 from aiogram.utils.exceptions import MessageCantBeDeleted
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from googleapiclient import errors
 
 from src.utils import get_logger, get_service
@@ -392,9 +392,9 @@ async def all_other_messages(message: Message):
 
 
 if __name__ == '__main__':
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(parser, 'date', run_date=datetime.now())
+    parser_task = asyncio.create_task(parser())
+
     dp.middleware.setup(LoggingMiddleware())
-    scheduler.start()
     executor.start_polling(dp)
-    scheduler.shutdown()
+
+    parser_task.cancel()

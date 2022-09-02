@@ -16,7 +16,6 @@ sqlmodel
 
 httpx
 loguru
-apscheduler
 
 # pydantic[email,dotenv]
 pydantic
