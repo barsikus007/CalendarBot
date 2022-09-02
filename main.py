@@ -1,15 +1,16 @@
-import base64
 import os
+import base64
 from pathlib import Path
 from datetime import datetime, timedelta
+from contextlib import suppress
 
+from loguru import logger
 from aiogram import executor, Bot, Dispatcher
 from aiogram.types import Update, Message, BotCommand, ContentTypes, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.dispatcher.middlewares import BaseMiddleware
 from aiogram.utils.exceptions import MessageCantBeDeleted
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from googleapiclient import errors
-from loguru import logger
 
 from src.utils import get_logger, get_service
 from src.utils.logo import make_image
@@ -19,7 +20,7 @@ from src.crud.student import get_student_by_fio, get_student_by_telegram_id, upd
 from worker import parser
 
 
-logger.remove
+logger.remove()
 logger = get_logger('bot')
 
 
@@ -325,10 +326,8 @@ async def google(query: CallbackQuery):
         video=settings.GIF_GOOGLE,
         reply_markup=InlineKeyboardMarkup().row(
             InlineKeyboardButton('How to add?', callback_data='how_to')))
-    try:
+    with suppress(MessageCantBeDeleted):
         await message.delete()
-    except MessageCantBeDeleted:
-        pass
     await query.answer('Rolling back...')
 
 
@@ -340,10 +339,8 @@ async def apple(query: CallbackQuery):
         reply_markup=InlineKeyboardMarkup().row(
             InlineKeyboardButton('IOS 12', callback_data='ios12'),
             InlineKeyboardButton('IOS 14', callback_data='ios14')))
-    try:
+    with suppress(MessageCantBeDeleted):
         await message.delete()
-    except MessageCantBeDeleted:
-        pass
     await query.answer('Rolling back...')
 
 
@@ -355,10 +352,8 @@ async def ios12(query: CallbackQuery):
         video=settings.GIF_IOS12,
         reply_markup=InlineKeyboardMarkup().row(
             InlineKeyboardButton('How to add?', callback_data='how_to')))
-    try:
+    with suppress(MessageCantBeDeleted):
         await message.delete()
-    except MessageCantBeDeleted:
-        pass
     await query.answer('Rolling back...')
 
 
@@ -370,10 +365,8 @@ async def ios14(query: CallbackQuery):
         video=settings.GIF_IOS14,
         reply_markup=InlineKeyboardMarkup().row(
             InlineKeyboardButton('How to add?', callback_data='how_to')))
-    try:
+    with suppress(MessageCantBeDeleted):
         await message.delete()
-    except MessageCantBeDeleted:
-        pass
     await query.answer('Rolling back...')
 
 
@@ -394,7 +387,6 @@ async def all_other_messages(message: Message):
 
 
 if __name__ == '__main__':
-    logger.info('kek')
     scheduler = AsyncIOScheduler()
     scheduler.add_job(parser, 'date', run_date=datetime.now())
     dp.middleware.setup(LoggingMiddleware())

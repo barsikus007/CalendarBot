@@ -4,9 +4,9 @@ from hashlib import md5
 from datetime import datetime
 
 import httpx
+from loguru import logger
 from pydantic import ValidationError
 from googleapiclient import errors
-from loguru import logger
 
 from src.utils import get_logger, get_service
 from src.schema import Event as ResponseEvent
