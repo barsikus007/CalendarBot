@@ -9,6 +9,7 @@ from aiogram.dispatcher.middlewares import BaseMiddleware
 from aiogram.utils.exceptions import MessageCantBeDeleted
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from googleapiclient import errors
+from loguru import logger
 
 from src.utils import get_logger, get_service
 from src.utils.logo import make_image
@@ -18,10 +19,11 @@ from src.crud.student import get_student_by_fio, get_student_by_telegram_id, upd
 from worker import parser
 
 
-bot_logger = get_logger('bot')
+logger.remove
+logger = get_logger('bot')
 
 
-service = get_service(bot_logger)
+service = get_service()
 bot = Bot(token=settings.TELEGRAM_TOKEN)
 dp = Dispatcher(bot)
 commands_list = [
@@ -38,10 +40,10 @@ commands_list = [
 
 class LoggingMiddleware(BaseMiddleware):
     async def on_process_message(self, message: Message, data: dict):
-        bot_logger.info(f'[{message.from_user.id}/{message.from_user.mention}]: {message.text}')
+        logger.info(f'[{message.from_user.id}/{message.from_user.mention}]: {message.text}')
 
     async def on_process_callback_query(self, query: CallbackQuery, data: dict):
-        bot_logger.info(f'[{query.from_user.id}/{query.from_user.mention}]: {query.data}')
+        logger.info(f'[{query.from_user.id}/{query.from_user.mention}]: {query.data}')
 
 
 async def report(text):
@@ -49,7 +51,7 @@ async def report(text):
 
 
 def create_color(mail, calendar_id):
-    bot_logger.info('Creating new color...')
+    logger.info('Creating new color...')
     rule = {
         'scope': {
             'type': 'user',
@@ -58,11 +60,11 @@ def create_color(mail, calendar_id):
         'role': 'writer'
     }
     service.acl().insert(calendarId=calendar_id, body=rule).execute()
-    bot_logger.info('SUCCESS')
+    logger.info('SUCCESS')
 
 
 async def create_calendar(student_id, tg_id):
-    bot_logger.info('Creating new calendar...')
+    logger.info('Creating new calendar...')
     student = await get_student_by_telegram_id(tg_id)
     _bot = await bot.me
     short_name = f'{student.fio[0]} {student.fio[1][0]}. {student.fio[2][0]}.'
@@ -78,21 +80,21 @@ async def create_calendar(student_id, tg_id):
     created_calendar = service.calendars().insert(body=calendar).execute()
     service.acl().insert(calendarId=created_calendar['id'], body=rule).execute()
     await set_student_calendar(student_id, created_calendar['id'])
-    bot_logger.info('SUCCESS')
+    logger.info('SUCCESS')
     return created_calendar['id']
 
 
 async def check_calendar_link(calendar_id, tg_id, student_id):
     try:
         service.calendars().get(calendarId=calendar_id).execute()
-        bot_logger.info('Calendar link exist')
+        logger.info('Calendar link exist')
     except errors.HttpError as e:
         if e.resp.status != 404:
             raise errors.HttpError('Other error (!=404)') from e
-        bot_logger.info(f'No calendar with that link... Strange\n{calendar_id}\n{tg_id}')
+        logger.info(f'No calendar with that link... Strange\n{calendar_id}\n{tg_id}')
         await report('AHTUNG, 404 CAL ERROR')
         calendar_id = await create_calendar(student_id, tg_id)
-    bot_logger.info(calendar_id)
+    logger.info(calendar_id)
     return calendar_id
 
 
@@ -392,6 +394,7 @@ async def all_other_messages(message: Message):
 
 
 if __name__ == '__main__':
+    logger.info('kek')
     scheduler = AsyncIOScheduler()
     scheduler.add_job(parser, 'date', run_date=datetime.now())
     dp.middleware.setup(LoggingMiddleware())

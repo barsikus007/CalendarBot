@@ -1,5 +1,6 @@
 import os
 import sys
+import copy
 
 from loguru import logger
 from googleapiclient.discovery import build
@@ -8,24 +9,24 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
 
-def get_logger(name):
-    logger.remove()
-    fmt = '<green>{time:YY/MM/DD HH:mm:ss}</> | <lvl>{level:7s}</> | <lvl>{message}</>'
-    logger.add(
+def get_logger(name: str) -> logger:
+    fmt = '<green>{time:YY/MM/DD HH:mm:ss}</> | <lvl>{level:7s}</> |<lvl>{message}</>'
+    logger_ = copy.deepcopy(logger)
+    logger_.add(
         f'logs/{name}/{{time:YY-MM-DD}}.log', level='INFO', format=fmt,
         filter=lambda _: _['level'].name in ['INFO', 'WARNING'],
         rotation='00:00', encoding='UTF-8'
     )
-    logger.add(
+    logger_.add(
         f'logs/{name}/{{time:YY-MM-DD}}-crash.log', level='ERROR', format=fmt,
         rotation='00:00', encoding='UTF-8'
     )
-    logger.add(sys.stderr, format=fmt, level='INFO')
-    return logger
+    logger_.add(sys.stderr, format=fmt, level='INFO')
+    return logger_
 
 
 # https://developers.google.com/calendar/api/quickstart/python
-def get_service(logger):
+def get_service():
     scopes = ['https://www.googleapis.com/auth/calendar']
     credentials = None
     # The file token.json stores the user's access and refresh tokens, and is
