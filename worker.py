@@ -191,7 +191,7 @@ async def google_executor(
         calendar_id: str,
 ):
     events_to_create, events_to_update, events_to_delete = to_google
-    if len(events_to_delete) > 50:
+    if len(events_to_delete) > 250:
         return logger.info('IT SEEMS THAT CALENDAR DROPPED - REJECTING CHANGES')
     for num, event in enumerate(events_to_create):
         logger.info(f'{num + 1:4d}/{len(events_to_create):4d} - Create')
