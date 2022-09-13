@@ -8,10 +8,10 @@ from src.models import Calendar, Event
 
 
 async def get_calendar(student_id: int, current_year=True) -> dict[int, str]:
-    now = datetime.now()
-    current_year_date = datetime(now.year if now.month >= 8 else now.year-1, 8, 1).astimezone()
     async with async_session() as session:
         if current_year:
+            now = datetime.now()
+            current_year_date = datetime(now.year if now.month >= 8 else now.year-1, 8, 1).astimezone()
             calendars = (
                 await session.exec(
                     select(Calendar, Event).join(Event)
