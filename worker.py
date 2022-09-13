@@ -52,8 +52,8 @@ def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
         responses = [
             get(f'{settings.GET_CALENDAR_URL}educationSpaceID=1&showAll=true', max_tries=3)
         ] if student_id == 200000 else [
-            get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2020-2021', max_tries=3),
-            get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2021-2022', max_tries=3),
+            # get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2020-2021', max_tries=3),
+            # get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2021-2022', max_tries=3),
             get(f'{settings.GET_CALENDAR_URL}studentID={student_id}', max_tries=3)
         ]
         events_list = []

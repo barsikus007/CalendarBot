@@ -1,10 +1,11 @@
 import asyncio
 
-from worker import get_calendar_from_site
+from worker import get_calendar_from_site, calendar_executor
 
 
 async def main():
-    get_calendar_from_site(200000)
+    # get_calendar_from_site(200000)
+    await calendar_executor(200000)
 
 
 if __name__ == '__main__':

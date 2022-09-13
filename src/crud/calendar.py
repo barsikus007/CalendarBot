@@ -1,12 +1,25 @@
+from datetime import datetime
+
 from sqlalchemy import update, delete
 from sqlmodel import select
 
 from src.db import async_session
-from src.models import Calendar
+from src.models import Calendar, Event
 
 
-async def get_calendar(student_id: int) -> dict[int, str]:
+async def get_calendar(student_id: int, current_year=True) -> dict[int, str]:
+    now = datetime.now()
+    current_year_date = datetime(now.year if now.month >= 8 else now.year-1, 8, 1).astimezone()
     async with async_session() as session:
+        if current_year:
+            calendars = (
+                await session.exec(
+                    select(Calendar, Event).join(Event)
+                    .where(Calendar.student_id == student_id)
+                    .where(Event.start > current_year_date)
+                )
+            ).all()
+            return {_[0].event_id: _[0].hash for _ in calendars}
         calendars = (
             await session.exec(
                 select(Calendar).where(Calendar.student_id == student_id)
