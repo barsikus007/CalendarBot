@@ -19,7 +19,7 @@ class Teacher(BaseModel):
 
 
 class EventInfo(BaseModel):
-    moduleName: str
+    moduleName: str | None
     categoryID: int | None
     moduleID: int | None
     # ID of event inside module (similar if same theme)
@@ -76,7 +76,7 @@ class ResponseData(BaseModel):
 
 class Response(BaseModel):
     # response data
-    data: ResponseData
+    data: ResponseData | None
     # info message
     msg: str
     # state of success (-1, 1)

@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from googleapiclient import errors
 
 from src.utils import get_logger, get_service
-from src.schema import Event as ResponseEvent
+from src.schema import Event as ResponseEvent, Response
 from src.models import Event, Calendar
 from src.settings import settings
 from src.crud.student import get_students_with_calendars
@@ -32,10 +32,10 @@ def error_log(e: Exception, text, trace=False):
         logger.error(f'[{e}/{type(e)}]: {text}')
 
 
-def get(url: str, max_tries: int = 0) -> dict:
+def get(url: str, max_tries: int = 0) -> Response:
     for _ in range(max_tries):
         try:
-            return httpx.get(url, timeout=10).json()
+            return Response(**httpx.get(url, timeout=10).json())
         except httpx.TimeoutException as e:
             error_log(e, '[Timeout] retrying...')
         except httpx.ConnectError as e:
@@ -50,16 +50,18 @@ def get(url: str, max_tries: int = 0) -> dict:
 def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
     try:  # TODO year: 2022-2023
         responses = [
-            get(f'{settings.GET_CALENDAR_URL}educationSpaceID=1&course=0&course=1&course=2&showAll=true', max_tries=3)
+            get(f'{settings.GET_CALENDAR_URL}educationSpaceID=1&showAll=true', max_tries=3)
         ] if student_id == 200000 else [
             get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2020-2021', max_tries=3),
             get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2021-2022', max_tries=3),
             get(f'{settings.GET_CALENDAR_URL}studentID={student_id}', max_tries=3)
         ]
-        raw_events_list = []
+        events_list = []
         for response in responses:
-            raw_events_list.extend(response['data']['raspList'])
-        events_list = [ResponseEvent(**event) for event in raw_events_list]
+            if response.state == 1:
+                events_list.extend(response.data.raspList)
+            else:
+                raise ValueError(f"Error state: {response.state=}; {response.data=}; {response.msg=}")
         if student_id == 200000:
             events_list = [event for event in events_list if event.info.categoryID in [2, 3]]
         logger.info(f'Total - {len(events_list):4d}')
