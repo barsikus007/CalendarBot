@@ -193,18 +193,22 @@ async def google_executor(
     events_to_create, events_to_update, events_to_delete = to_google
     if len(events_to_delete) > 50:
         return logger.info('IT SEEMS THAT CALENDAR DROPPED - REJECTING CHANGES')
-    for num, event in enumerate(events_to_create):
-        logger.info(f'{num + 1:4d}/{len(events_to_create):4d} - Create')
-        await send_google_event(service, calendar_id, event, True)
-        await create_calendar(Calendar(student_id=student_id, event_id=event.id, hash=event.hash))
-    for num, event in enumerate(events_to_update):
-        logger.info(f'{num + 1:4d}/{len(events_to_update):4d} - Update')
-        await send_google_event(service, calendar_id, event)
-        await update_calendar(Calendar(student_id=student_id, event_id=event.id, hash=event.hash))
-    for num, event_id in enumerate(events_to_delete):
-        logger.info(f'{num + 1:4d}/{len(events_to_delete):4d} - Delete')
-        await delete_google_event(service, calendar_id, event_id)
-        await delete_calendar(student_id, event_id)
+    try:
+        for num, event in enumerate(events_to_create):
+            logger.info(f'{num + 1:4d}/{len(events_to_create):4d} - Create')
+            await send_google_event(service, calendar_id, event, True)
+            await create_calendar(Calendar(student_id=student_id, event_id=event.id, hash=event.hash))
+        for num, event in enumerate(events_to_update):
+            logger.info(f'{num + 1:4d}/{len(events_to_update):4d} - Update')
+            await send_google_event(service, calendar_id, event)
+            await update_calendar(Calendar(student_id=student_id, event_id=event.id, hash=event.hash))
+        for num, event_id in enumerate(events_to_delete):
+            logger.info(f'{num + 1:4d}/{len(events_to_delete):4d} - Delete')
+            await delete_google_event(service, calendar_id, event_id)
+            await delete_calendar(student_id, event_id)
+    except Exception as e:
+        error_log(e, '[UNKNOWN ERROR IN GOOGLE EXECUTOR]', True)
+        await asyncio.sleep(ERROR_COOLDOWN * 2)
 
 
 async def send_google_event(service, calendar_id, event: Event, create=False):
