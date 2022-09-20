@@ -191,7 +191,7 @@ async def google_executor(
         calendar_id: str,
 ):
     events_to_create, events_to_update, events_to_delete = to_google
-    if len(events_to_delete) > 250:
+    if len(events_to_delete) > 50:
         return logger.info('IT SEEMS THAT CALENDAR DROPPED - REJECTING CHANGES')
     for num, event in enumerate(events_to_create):
         logger.info(f'{num + 1:4d}/{len(events_to_create):4d} - Create')
@@ -250,8 +250,10 @@ async def send_google_event(service, calendar_id, event: Event, create=False):
                 await asyncio.sleep(ERROR_COOLDOWN)
             else:
                 logger.info('XXX ERROR SLEEPING...')
+                logger.info(event)
                 error_log(e, '[XXX / GOOGLE IS DOWN]')
                 await asyncio.sleep(ERROR_COOLDOWN)
+                raise e
         except Exception as e:
             error_log(e, '[UNKNOWN ERROR IN EVENT CREATE]', True)
             await asyncio.sleep(ERROR_COOLDOWN)
