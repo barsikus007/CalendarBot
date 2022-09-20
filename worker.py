@@ -1,7 +1,7 @@
 import math
 import asyncio
 from hashlib import md5
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import httpx
 from loguru import logger
@@ -66,7 +66,7 @@ def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
             events_list = [event for event in events_list if event.info.categoryID in [2, 3]]
         logger.info(f'Total - {len(events_list):4d}')
         if not events_list:
-            raise ValueError('Site returned no data')
+            raise ValueError('Site returned no data (probably, student was kicked)')
         return events_list
     except TimeoutError as e:
         error_log(e, '[TimeoutError]')
@@ -159,6 +159,9 @@ async def calendar_executor(student_id):
             event = cut_event(raw_event)
             if not event:
                 # Skip all day event
+                continue
+            if event.end - event.start < timedelta():
+                # Skip fucked up event
                 continue
             event_from_db = await get_event(event.id)
             if event_from_db is None:
