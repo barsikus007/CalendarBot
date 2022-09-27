@@ -115,7 +115,8 @@ async def create_calendar(student_id, tg_id):
     logger.info('Creating new calendar...')
     student = await get_student_by_telegram_id(tg_id)
     _bot = await bot.me
-    short_name = f'{student.fio[0]} {student.fio[1][0]}. {student.fio[2][0]}.'
+    fio = student.fio.split()
+    short_name = f'{fio[0]} {fio[1][0]}. {fio[2][0]}.'
     calendar = {
         'summary': short_name,
         'description': f'Generated and updating by @{_bot.username}',
