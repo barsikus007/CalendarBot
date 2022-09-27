@@ -427,6 +427,7 @@ async def start_cmd(message: Message):
         await bot.set_my_commands(commands_list)
     await message.answer(
         'For the first time you need to setup name via /setup\n'
+        'If you have troubles with /setup, you could try /setup_id and /setup_auth\n'
         'After than you can get calendar link via /get\n'
         'To add colors use /color\n'
         'To remove previous calendar use /remove\n'
