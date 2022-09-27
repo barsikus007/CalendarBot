@@ -5,6 +5,12 @@ from src.db import async_session
 from src.models import Student
 
 
+async def create_student(student: Student):
+    async with async_session() as session:
+        session.add(student)
+        await session.commit()
+
+
 async def get_students_with_calendars() -> list[Student]:
     async with async_session() as session:
         return (await session.exec(

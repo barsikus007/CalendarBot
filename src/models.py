@@ -11,8 +11,8 @@ __all__ = ['Student', 'Event', 'Calendar']
 class Student(SQLModel, table=True):
     id: int = Field(primary_key=True)
     fio: str
-    telegram_id: int | None
-    calendar_id: EmailStr | None
+    telegram_id: int | None = None
+    calendar_id: EmailStr | None = None
 
 
 class Event(SQLModel, table=True):

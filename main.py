@@ -1,9 +1,12 @@
 import os
+import re
 import base64
 from pathlib import Path
 from datetime import datetime, timedelta
 from contextlib import suppress
 
+
+import httpx
 from loguru import logger
 from aiogram import executor, Bot, Dispatcher
 from aiogram.types import Update, Message, BotCommand, ContentTypes, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -12,12 +15,14 @@ from aiogram.utils.exceptions import MessageCantBeDeleted
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from googleapiclient import errors
 
+from src.models import Student
 from src.utils import get_logger, get_service
 from src.utils.logo import make_image
 from src.settings import settings
 from src.db.dump_db import dump_db
-from src.crud.student import get_student_by_fio, get_student_by_telegram_id, update_student_tg_id, set_student_calendar
-from worker import parser
+from src.crud.student import get_student_by_fio, get_student_by_telegram_id, update_student_tg_id, set_student_calendar, \
+    get_student_by_student_id, create_student
+from worker import parser, get as get_with_tries
 
 
 logger.remove()
@@ -30,8 +35,12 @@ dp = Dispatcher(bot)
 commands_list = [
     BotCommand(command='/start', description='Start the Bot'),
     BotCommand(command='/help', description='Help page about commands'),
-    BotCommand(command='/guide', description='Quick video guide'),
-    BotCommand(command='/setup', description='Choose your name for calendar'),
+    BotCommand(command='/guide', description='Quick video guide for /setup'),
+    BotCommand(command='/guide_id', description='Quick video guide for /setup_id'),
+    BotCommand(command='/guide_auth', description='Quick video guide for /setup_auth'),
+    BotCommand(command='/setup', description='Setup calendar using your name (only for elder courses)'),
+    BotCommand(command='/setup_id', description='Setup calendar using id'),
+    BotCommand(command='/setup_auth', description='Setup calendar using auth'),
     BotCommand(command='/color', description='Setup colors for calendar'),
     BotCommand(command='/get', description='Generate personal calendar url and link'),
     BotCommand(command='/electives', description='Get electives calendar url and link'),
@@ -49,6 +58,45 @@ class LoggingMiddleware(BaseMiddleware):
 
 async def report(text):
     await bot.send_message(chat_id=settings.ADMIN_ID, text=text, disable_notification=True)
+
+
+async def auth_and_get_id_and_fio(username: str, password: str):
+    encoded_password = base64.b64decode(password).decode()
+    async with httpx.AsyncClient() as session:
+        auth = await session.post(
+            settings.AUTH_URL,
+            json={'password': encoded_password, 'userName': username})
+        headers = {'authorization': f"Bearer {auth.json()['data']['accessToken']}"}
+        kek = await session.get(settings.AUTH_URL, headers=headers)
+        kek.raise_for_status()
+        user = kek.json()['data']['user']
+        student_id = user['anotherID']
+        fio = f"{user['last_name']} {user['first_name']} {user['middle_name']}"
+        return student_id, fio
+
+
+async def create_student_and_check_id(message, student_id, fio):
+    if await get_student_by_fio(fio):
+        await update_student_tg_id(fio, message.from_user.id)
+    elif await get_student_by_student_id(student_id):
+        await update_student_tg_id(fio, message.from_user.id)
+    else:
+        try:
+            resp = get_with_tries(f'{settings.GET_CALENDAR_URL}studentID={student_id}', max_tries=10)
+            if not resp or resp.state != 1:
+                raise ValueError('University api is down or you passed wrong id')
+            student = Student(
+                id=student_id,
+                fio=fio,
+                telegram_id=message.from_user.id,
+            )
+            await create_student(student)
+        except Exception as e:
+            await message.answer(
+                f'Error:\n{e}\n'
+                f'Check your link and PM to @{settings.ADMIN_USERNAME} for report problem')
+            return
+    return True
 
 
 def create_color(mail, calendar_id):
@@ -145,7 +193,10 @@ async def setup(message: Message):
         await message.answer('Genius ( ͡° ͜ʖ ͡°)')
         return
     if len(splitted) == 1:
-        await message.answer('Example:\n/setup Иванов Иван Иванович')
+        await message.answer(
+            'Guide for this method: /guide\n'
+            'Example:\n'
+            '/setup Иванов Иван Иванович')
     elif len(splitted) < 4:
         await message.answer(f'Wrong input:\n{message.text}\nExample:\n/setup Иванов Иван Иванович')
     else:
@@ -156,6 +207,56 @@ async def setup(message: Message):
             await get(message, fio)
         else:
             await message.answer(f'Wrong name:\n{message.text}\nExample:\n/setup Иванов Иван Иванович')
+
+
+@dp.message_handler(commands='setup_id')
+async def setup_id(message: Message):
+    splitted = message.text.split()
+    if message.text == '/setup_id https://link.to/photo/123456.jpg Иванов Иван Иванович':
+        await message.answer('Genius ( ͡° ͜ʖ ͡°)')
+        return
+    if len(splitted) == 1:
+        await message.answer(
+            f'Guide for this method: /guide_id\n'
+            f'Application link: {settings.WEBAPP_URL}\n'
+            f'Example:\n'
+            f'/setup_id https://link.to/photo/123456.jpg Иванов Иван Иванович')
+    elif len(splitted) < 5:
+        await message.answer(
+            f'Wrong input:\n'
+            f'{message.text}\n'
+            f'Example:\n'
+            f'/setup_id https://link.to/photo/123456.jpg Иванов Иван Иванович')
+    else:
+        fio = ' '.join(splitted[2:])
+        student_id_link = splitted[1]
+        student_id = re.findall(r'.*/(\d{4,10})\.jpg.*', student_id_link)[0]
+        success = await create_student_and_check_id(message, student_id, fio)
+        if not success:
+            return
+        await get(message, fio)
+
+
+@dp.message_handler(commands='setup_auth')
+async def setup_auth(message: Message):
+    splitted = message.text.split()
+    if message.text == '/setup_auth username@gmail.com password':
+        await message.answer('Genius ( ͡° ͜ʖ ͡°)')
+        return
+    if len(splitted) == 1:
+        await message.answer(
+            'Guide for this method: /guide_auth\n'
+            'Example:\n'
+            '/setup_auth username@gmail.com password')
+    elif len(splitted) != 3:
+        await message.answer(f'Wrong input:\n{message.text}\nExample:\n/setup_auth username@gmail.com password')
+    else:
+        username, password = splitted[1:]
+        student_id, fio = await auth_and_get_id_and_fio(username, password)
+        success = await create_student_and_check_id(message, student_id, fio)
+        if not success:
+            return
+        await get(message, fio)
 
 
 @dp.message_handler(commands='get')
@@ -301,6 +402,22 @@ async def guide(message: Message):
     await message.answer_video(
         caption='Take it!',
         video=settings.GIF_GUIDE,
+    )
+
+
+@dp.message_handler(commands='guide_id')
+async def guide_id(message: Message):
+    await message.answer_video(
+        caption='Take it!',
+        video=settings.GIF_GUIDE_ID,
+    )
+
+
+@dp.message_handler(commands='guide_auth')
+async def guide_auth(message: Message):
+    await message.answer_video(
+        caption='Take it!',
+        video=settings.GIF_GUIDE_AUTH,
     )
 
 
