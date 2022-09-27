@@ -61,11 +61,10 @@ async def report(text):
 
 
 async def auth_and_get_id_and_fio(username: str, password: str):
-    encoded_password = base64.b64decode(password).decode()
     async with httpx.AsyncClient() as session:
         auth = await session.post(
             settings.AUTH_URL,
-            json={'password': encoded_password, 'userName': username})
+            json={'password': password, 'userName': username})
         headers = {'authorization': f"Bearer {auth.json()['data']['accessToken']}"}
         kek = await session.get(settings.AUTH_URL, headers=headers)
         kek.raise_for_status()
