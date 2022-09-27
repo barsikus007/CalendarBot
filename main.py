@@ -256,7 +256,7 @@ async def setup_auth(message: Message):
         except Exception as e:
             await message.answer(
                 f'Error:\n{e}\n'
-                f'Check your link and PM to @{settings.ADMIN_USERNAME} for report problem')
+                f'Check your username and password and PM to @{settings.ADMIN_USERNAME} for report problem')
             return
         success = await create_student_and_check_id(message, student_id, fio)
         if not success:
