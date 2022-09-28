@@ -113,22 +113,26 @@ def create_color(mail, calendar_id):
 
 async def create_calendar(student_id, tg_id):
     logger.info('Creating new calendar...')
-    student = await get_student_by_telegram_id(tg_id)
-    _bot = await bot.me
-    fio = student.fio.split()
-    short_name = f'{fio[0]} {fio[1][0]}. {fio[2][0]}.'
-    calendar = {
-        'summary': short_name,
-        'description': f'Generated and updating by @{_bot.username}',
-        'timeZone': 'Europe/Moscow'
-    }
-    rule = {
-        'scope': {'type': 'default'},
-        'role': 'reader'
-    }
-    created_calendar = service.calendars().insert(body=calendar).execute()
-    service.acl().insert(calendarId=created_calendar['id'], body=rule).execute()
-    await set_student_calendar(student_id, created_calendar['id'])
+    try:
+        student = await get_student_by_telegram_id(tg_id)
+        _bot = await bot.me
+        fio = student.fio.split()
+        short_name = f'{fio[0]} {fio[1][0]}. {fio[2][0]}.'
+        calendar = {
+            'summary': short_name,
+            'description': f'Generated and updating by @{_bot.username}',
+            'timeZone': 'Europe/Moscow'
+        }
+        rule = {
+            'scope': {'type': 'default'},
+            'role': 'reader'
+        }
+        created_calendar = service.calendars().insert(body=calendar).execute()
+        service.acl().insert(calendarId=created_calendar['id'], body=rule).execute()
+        await set_student_calendar(student_id, created_calendar['id'])
+    except Exception as e:
+        logger.exception(e)
+        return
     logger.info('SUCCESS')
     return created_calendar['id']
 
@@ -230,7 +234,13 @@ async def setup_id(message: Message):
     else:
         fio = ' '.join(splitted[2:])
         student_id_link = splitted[1]
-        student_id = re.findall(r'.*/(\d{4,10})\.jpg.*', student_id_link)[0]
+        try:
+            student_id = re.findall(r'.*/(\d{4,10})\.jpg.*', student_id_link)[0]
+        except IndexError:
+            await message.answer(
+                "Wrong link or you doesn't have avatar yet, use /setup_auth instead"
+            )
+            return
         success = await create_student_and_check_id(message, student_id, fio)
         if not success:
             return
@@ -283,6 +293,10 @@ async def get(message: Message, fio=None):
                 f'Server error - try again later or contact @{settings.ADMIN_USERNAME} for report problem')
             return
     calendar_id = await check_calendar_link(calendar_id, message.from_user.id, user_data.id)
+    if not calendar_id:
+        await message.answer(
+            f'Server error - try again later or contact @{settings.ADMIN_USERNAME} for report problem')
+        return
     base64_link = base64.b64encode(calendar_id.encode('ascii')).decode('ascii').replace('=', '')
     calendar_url = f'https://calendar.google.com/calendar/u/0?cid={base64_link}'
     await message.answer(
