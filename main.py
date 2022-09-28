@@ -5,7 +5,6 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from contextlib import suppress
 
-
 import httpx
 from loguru import logger
 from aiogram import executor, Bot, Dispatcher
