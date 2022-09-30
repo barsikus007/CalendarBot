@@ -7,16 +7,18 @@ from src.db import async_session
 from src.models import Calendar, Event
 
 
-async def get_calendar(student_id: int, current_year=True) -> dict[int, str]:
+async def get_calendar(student_id: int, current_year=True, current_month=True) -> dict[int, str]:
     async with async_session() as session:
         if current_year:
             now = datetime.now()
-            current_year_date = datetime(now.year if now.month >= 8 else now.year-1, 8, 1).astimezone()
+            current_date = datetime(now.year if now.month >= 8 else now.year-1, 8, 1).astimezone()
+            if current_month:
+                current_date = datetime(now.year if now.month >= 8 else now.year-1, now.month, 1).astimezone()
             calendars = (
                 await session.exec(
                     select(Calendar, Event).join(Event)
                     .where(Calendar.student_id == student_id)
-                    .where(Event.start > current_year_date)
+                    .where(Event.start > current_date)
                 )
             ).all()
             return {_[0].event_id: _[0].hash for _ in calendars}

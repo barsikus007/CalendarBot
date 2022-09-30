@@ -48,13 +48,13 @@ def get(url: str, max_tries: int = 0) -> Response:
 
 
 def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
-    try:  # TODO year: 2022-2023
+    current_month = datetime.now().month
+    try:
         responses = [
             get(f'{settings.GET_CALENDAR_URL}educationSpaceID=1&showAll=true', max_tries=3)
         ] if student_id == 200000 else [
-            # get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2020-2021', max_tries=3),
-            # get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&year=2021-2022', max_tries=3),
-            get(f'{settings.GET_CALENDAR_URL}studentID={student_id}', max_tries=3)
+            get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&month={(current_month + offset) % 12 or 12}',
+                max_tries=3) for offset in range(3)
         ]
         events_list = []
         for response in responses:
