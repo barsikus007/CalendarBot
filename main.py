@@ -1,6 +1,7 @@
 import os
 import re
 import base64
+import asyncio
 from pathlib import Path
 from datetime import datetime, timedelta
 from contextlib import suppress
@@ -27,6 +28,7 @@ from worker import parser, get as get_with_tries
 logger.remove()
 logger = get_logger('bot')
 
+RACE_CONDITION_COOLDOWN = 10
 
 service = get_service()
 bot = Bot(token=settings.TELEGRAM_TOKEN)
@@ -127,6 +129,7 @@ async def create_calendar(student_id, tg_id):
             'role': 'reader'
         }
         created_calendar = service.calendars().insert(body=calendar).execute()
+        await asyncio.sleep(RACE_CONDITION_COOLDOWN)
         service.acl().insert(calendarId=created_calendar['id'], body=rule).execute()
         await set_student_calendar(student_id, created_calendar['id'])
     except Exception as e:
