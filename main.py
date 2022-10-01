@@ -311,7 +311,8 @@ async def get(message: Message, fio=None):
              f'If you are PC user use calendar link instead:\n'
              f'{calendar_url}\n'
              f'If your are APPLE user import ics file instead:\n'
-             f'https://calendar.google.com/calendar/ical/{calendar_id.split("@")[0]}%40group.calendar.google.com/public/basic.ics',
+             f'https://calendar.google.com/calendar/ical/{calendar_id.split("@")[0]}%40group.calendar.google.com/public/basic.ics\n\n'
+             f'You can use /color command if you want to colorize your calendar',
         reply_markup=InlineKeyboardMarkup().row(
             InlineKeyboardButton('How to add?', callback_data='how_to')))
 
