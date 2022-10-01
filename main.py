@@ -212,7 +212,9 @@ async def setup(message: Message):
             await update_student_tg_id(fio, message.from_user.id)
             await get(message, fio)
         else:
-            await message.answer(f'Wrong name:\n{message.text}\nExample:\n/setup Иванов Иван Иванович')
+            await message.answer(
+                f'Wrong name or you doesn\'t exist in database.\n'
+                f'Try to use /setup_id or /setup_auth instead')
 
 
 @dp.message_handler(commands='setup_id')
