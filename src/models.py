@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from pydantic import EmailStr
-from sqlmodel import SQLModel, Field, Column, TIMESTAMP, BigInteger
+from sqlmodel import SQLModel, Field, Column, ForeignKey, TIMESTAMP, BigInteger
 
 
 __all__ = ['Student', 'Event', 'Calendar']
@@ -29,9 +29,9 @@ class Event(SQLModel, table=True):
 
 class Calendar(SQLModel, table=True):
     student_id: int | None = Field(
-        default=None, foreign_key='student.id', primary_key=True, nullable=False
+        foreign_key='student.id', primary_key=True, nullable=False
     )
     event_id: int | None = Field(
-        default=None, foreign_key='event.id', primary_key=True, nullable=False
+        sa_column=Column(BigInteger(), ForeignKey(Event.id), primary_key=True, nullable=False),
     )
     hash: str
