@@ -1,8 +1,7 @@
 from datetime import datetime
 
 from pydantic import EmailStr
-from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, TIMESTAMP
+from sqlmodel import SQLModel, Field, Column, TIMESTAMP, BigInteger
 
 
 __all__ = ['Student', 'Event', 'Calendar']
@@ -16,7 +15,7 @@ class Student(SQLModel, table=True):
 
 
 class Event(SQLModel, table=True):
-    id: int = Field(primary_key=True)
+    id: int = Field(sa_column=Column(BigInteger(), primary_key=True))
     start: datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False))
     end: datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False))
     name: str
