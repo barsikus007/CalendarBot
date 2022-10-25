@@ -93,7 +93,7 @@ def cut_event(raw_event: ResponseEvent):
                   f'Тема: {raw_event.info.theme}\n' \
                   f'Группы: {groups}'
     if raw_event.bordered:
-        name = f'[{raw_event.name}]'
+        name = f'[ {raw_event.name.strip()} ]'
         color = '#e1e1e1'
     if raw_event.info.type:
         description += f'\nТип: {raw_event.info.type}'
