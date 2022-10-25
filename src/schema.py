@@ -45,6 +45,7 @@ class EventInfo(BaseModel):
     groups: list[Group]
     teachers: list[Teacher]
     groupID: int
+    type: str | None
     typeID: int | None
     studentsCount: int
     course: int

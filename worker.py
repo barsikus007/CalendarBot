@@ -79,30 +79,37 @@ def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
 
 
 def cut_event(raw_event: ResponseEvent):
-    info_dict = raw_event.info
     if not raw_event.end:
         # All day event (probably - free day), skipping...
         return
     event_ids = raw_event.raspItemsIDs
     event_id = sum(event_ids) if len(event_ids) > 1 else event_ids[0]  # sum may have troubles
-    teachers = ', '.join(sorted([teacher.name for teacher in info_dict.teachers]))
-    groups = ', '.join(sorted([group.name for group in info_dict.groups]))
+    name = raw_event.name
+    color = raw_event.color or '#f0f0f0'
+    teachers = ', '.join(sorted([teacher.name for teacher in raw_event.info.teachers]))
+    groups = ', '.join(sorted([group.name for group in raw_event.info.groups]))
+    description = f'Преподаватели: {teachers}\n' \
+                  f'Модуль: {raw_event.info.moduleName}\n' \
+                  f'Тема: {raw_event.info.theme}\n' \
+                  f'Группы: {groups}'
+    if raw_event.bordered:
+        name = f'[{raw_event.name}]'
+        color = '#e1e1e1'
+    if raw_event.info.type:
+        description += f'\nТип: {raw_event.info.type}'
+    if raw_event.info.link:
+        description = f'{raw_event.info.link}\n{description}'
     event = Event(
         id=event_id,
-        name=raw_event.name,
-        color=raw_event.color or '#f0f0f0',
+        name=name,
+        color=color,
         start=raw_event.start,
         end=raw_event.end,
-        aud=info_dict.aud or '',
-        link=info_dict.link,
+        aud=raw_event.info.aud or '',
+        link=raw_event.info.link,
         group_names=groups,
-        description=f'Преподаватели: {teachers}\n'
-                    f'Модуль: {info_dict.moduleName}\n'
-                    f'Тема: {info_dict.theme}\n'
-                    f'Группы: {groups}',
+        description=description,
     )
-    if event.link:
-        event.description = f'{event.link}\n{event.description}'
     event.hash = hash_event(event)
     return event
 
@@ -120,13 +127,16 @@ def hash_event(event: Event):
     ).encode('UTF-8')).hexdigest()
 
 
-def color_picker(input_color):
+def color_picker(hex_color: str) -> str:
+    if hex_color == 'e1e1e1':
+        return '8'
+
     def distance(c1, c2):
         (r1, g1, b1) = c1
         (r2, g2, b2) = c2
         return math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2)
 
-    input_color = (int(input_color[:2], 16), int(input_color[2:4], 16), int(input_color[4:], 16))
+    hex_color = (int(hex_color[:2], 16), int(hex_color[2:4], 16), int(hex_color[4:], 16))
     google_colors = {
         (164, 189, 252): '1',
         (122, 231, 191): '2',
@@ -135,13 +145,13 @@ def color_picker(input_color):
         (251, 215, 91): '5',
         (255, 184, 120): '6',
         (70, 214, 219): '7',
-        (225, 225, 225): '8',
+        # (225, 225, 225): '8',
         (84, 132, 237): '9',
         (81, 183, 73): '10',
         (220, 33, 39): '11'
     }
     colors = list(google_colors.keys())
-    closest_colors = sorted(colors, key=lambda color: distance(color, input_color))
+    closest_colors = sorted(colors, key=lambda color: distance(color, hex_color))
     closest_color = closest_colors[0]
     code = google_colors[closest_color]
     return code
