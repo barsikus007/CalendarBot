@@ -7,13 +7,18 @@ from src.db import async_session
 from src.models import Calendar, Event
 
 
-async def get_calendar(student_id: int, current_year=True, current_month=True) -> dict[int, str]:
+async def get_calendar(
+        student_id: int,
+        get_after_current_academic_year=False,
+        get_after_current_month=True,
+) -> dict[int, str]:
     async with async_session() as session:
-        if current_year:
-            now = datetime.now()
+        now = datetime.now()
+        if get_after_current_academic_year:
             current_date = datetime(now.year if now.month >= 8 else now.year-1, 8, 1).astimezone()
-            if current_month:
-                current_date = datetime(now.year if now.month >= 8 else now.year-1, now.month, 1).astimezone()
+        if get_after_current_month:
+            current_date = datetime(now.year, now.month, 1).astimezone()
+        if get_after_current_academic_year or get_after_current_month:
             calendars = (
                 await session.exec(
                     select(Calendar, Event).join(Event)

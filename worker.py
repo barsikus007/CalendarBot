@@ -202,8 +202,11 @@ async def google_executor(
         to_google: tuple[list[Event], list[Event], list[int]],
         student_id: int,
         calendar_id: str,
+        dry_run: bool = False,
 ):
     events_to_create, events_to_update, events_to_delete = to_google
+    if dry_run:
+        return logger.info('Dry run, no changes were made')
     if len(events_to_delete) > 50:
         return logger.info('IT SEEMS THAT CALENDAR DROPPED - REJECTING CHANGES')
     try:
@@ -297,7 +300,7 @@ async def delete_google_event(service, calendar_id, event_id):
             await asyncio.sleep(ERROR_COOLDOWN)
 
 
-async def parser():
+async def parser(dry_run=False):
     logger.info('parser')
     while True:
         try:
@@ -309,7 +312,7 @@ async def parser():
                 if to_google is None:
                     logger.info('Skipping google executor due to error above...')
                 else:
-                    await google_executor(service, to_google, student.id, student.calendar_id)
+                    await google_executor(service, to_google, student.id, student.calendar_id, dry_run)
                 await asyncio.sleep(STUDENTS_COOLDOWN)
             logger.info('Last user, sleeping...')
             await asyncio.sleep(LOOPS_COOLDOWN)
@@ -323,4 +326,4 @@ if __name__ == '__main__':
 
     if platform.system() == 'Windows':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(parser())
+    asyncio.run(parser(dry_run=False))
