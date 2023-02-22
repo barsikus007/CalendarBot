@@ -40,10 +40,8 @@ def get(url: str, max_tries: int = 0) -> Response:
             error_log(e, '[Timeout] retrying...')
         except httpx.ConnectError as e:
             error_log(e, '[Connection Error] retrying...')
-        except ValueError as e:
-            error_log(e, '[503 Service Temporarily Unavailable - ValueError], retrying...')
-        except TypeError as e:
-            error_log(e, '[503 Service Temporarily Unavailable - TypeError], retrying...')
+        except (ValueError, TypeError) as e:
+            error_log(e, f'[503 Service Temporarily Unavailable - {type(e)}], retrying...')
         raise TimeoutError(f'After {max_tries} tries on {url}, server still can\'t send response')
 
 
@@ -51,7 +49,8 @@ def get_calendar_from_site(student_id: int) -> list[ResponseEvent] | None:
     current_month = datetime.now().month
     try:
         responses = [
-            get(f'{settings.GET_CALENDAR_URL}educationSpaceID=1&showAll=true', max_tries=3)
+            get(f'{settings.GET_CALENDAR_URL}educationSpaceID=1&showAll=true&month={(current_month + offset) % 12 or 12}',
+                max_tries=3) for offset in range(3)
         ] if student_id == 200000 else [
             get(f'{settings.GET_CALENDAR_URL}studentID={student_id}&month={(current_month + offset) % 12 or 12}',
                 max_tries=3) for offset in range(3)
@@ -85,7 +84,11 @@ def cut_event(raw_event: ResponseEvent):
     event_ids = raw_event.raspItemsIDs
     event_id = sum(event_ids) if len(event_ids) > 1 else event_ids[0]  # sum may have troubles
     name = raw_event.name
-    color = raw_event.color or '#f0f0f0'
+    '#757575'
+    if raw_event.color[0] == '#' and raw_event.color[1:].isalnum():
+        color = raw_event.color or '#f0f0f0'
+    else:
+        color = '#757575'
     teachers = ', '.join(sorted([teacher.name for teacher in raw_event.info.teachers]))
     groups = ', '.join(sorted([group.name for group in raw_event.info.groups]))
     description = f'Преподаватели: {teachers}\n' \
@@ -157,7 +160,7 @@ def color_picker(hex_color: str) -> str:
     return code
 
 
-async def calendar_executor(student_id):
+async def calendar_executor(student_id) -> tuple[list[Event], list[Event], list[int]] | None:
     try:
         events_to_create = []
         events_to_update = []
